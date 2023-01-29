@@ -27,9 +27,6 @@ dependencies {
 	compileOnly("org.apache.ant:ant:1.10.12")
 	testImplementation("org.assertj:assertj-core:3.23.1")
 	testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
-	testImplementation("org.scilab.forge:jlatexmath:1.0.7")
-	"pdfRuntimeOnly"("org.apache.xmlgraphics:fop:2.7")
-	"pdfRuntimeOnly"("org.apache.xmlgraphics:batik-all:1.15")
 }
 
 repositories {
@@ -44,7 +41,6 @@ sourceSets {
 		}
 		resources {
 			srcDirs("src")
-			include("**/graphviz.dat")
 			include("**/*.png")
 			include("**/*.svg")
 			include("**/*.txt")
@@ -72,13 +68,12 @@ tasks.compileJava {
 
 tasks.withType<Jar>().configureEach {
 	manifest {
-		attributes["Main-Class"] = "net.sourceforge.plantuml.Run"
+		attributes["Main-Class"] = "net.sourceforge.plantuml.wasm.RunEmpty"
 		attributes["Implementation-Version"] = archiveVersion
 		attributes["Build-Jdk-Spec"] = System.getProperty("java.specification.version")
 		from("manifest.txt")
 	}
 	from("skin") { into("skin") }
-	from("stdlib") { into("stdlib") }
 	from("svg") { into("svg") }
 	from("themes") { into("themes") }
 	// source sets for java and resources are on "src", only put once into the jar
