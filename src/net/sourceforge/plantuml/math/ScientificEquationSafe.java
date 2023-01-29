@@ -49,7 +49,6 @@ import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.core.ImageData;
-import net.sourceforge.plantuml.eps.EpsGraphics;
 import net.sourceforge.plantuml.graphic.GraphicStrings;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SImageIO;
@@ -147,14 +146,6 @@ public class ScientificEquationSafe {
 		if (fileFormat.getFileFormat() == FileFormat.SVG) {
 			os.write(getSvg(1, foregroundColor, backgroundColor).getSvg(true).getBytes());
 			return dimSvg;
-		}
-		if (fileFormat.getFileFormat() == FileFormat.EPS) {
-			final BufferedImage image = getImage(foregroundColor, backgroundColor).withScale(scale).getImage();
-			final EpsGraphics out = new EpsGraphics();
-			out.drawImage(image, 0, 0);
-			out.close();
-			os.write(out.getEPSCode().getBytes());
-			return new ImageDataSimple(image.getWidth(), image.getHeight());
 		}
 		throw new UnsupportedOperationException();
 	}

@@ -52,7 +52,6 @@ import net.sourceforge.plantuml.EnsureVisible;
 import net.sourceforge.plantuml.asciiart.BasicCharArea;
 import net.sourceforge.plantuml.awt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.eps.EpsGraphics;
 import net.sourceforge.plantuml.svek.Cluster;
 import net.sourceforge.plantuml.svek.ClusterPosition;
 import net.sourceforge.plantuml.svek.MinFinder;
@@ -282,21 +281,21 @@ public class DotPath implements UShape, Moveable {
 		double result = Double.MAX_VALUE;
 		for (XCubicCurve2D c : beziers) {
 			final double d1 = ref.distance(c.x1, c.y1);
-			if (d1 < result) 
+			if (d1 < result)
 				result = d1;
-			
+
 			final double d2 = ref.distance(c.x2, c.y2);
-			if (d2 < result) 
+			if (d2 < result)
 				result = d2;
-			
+
 			final double d3 = ref.distance(c.ctrlx1, c.ctrly1);
-			if (d3 < result) 
+			if (d3 < result)
 				result = d3;
-			
+
 			final double d4 = ref.distance(c.ctrlx2, c.ctrly2);
-			if (d4 < result) 
+			if (d4 < result)
 				result = d4;
-			
+
 		}
 		return result;
 
@@ -376,31 +375,6 @@ public class DotPath implements UShape, Moveable {
 			visible.ensureVisible(x + bez.x2, y + bez.y2);
 		}
 
-	}
-
-	public void drawOk(EpsGraphics eps, double x, double y) {
-		// boolean first = true;
-		for (XCubicCurve2D bez : beziers) {
-			bez = new XCubicCurve2D(x + bez.x1, y + bez.y1, x + bez.ctrlx1, y + bez.ctrly1, x + bez.ctrlx2,
-					y + bez.ctrly2, x + bez.x2, y + bez.y2);
-			eps.epsLine(bez.x1, bez.y1, bez.x2, bez.y2);
-		}
-	}
-
-	public void draw(EpsGraphics eps, double x, double y) {
-		eps.newpathDot();
-		final boolean dashed = false;
-		boolean first = true;
-		for (XCubicCurve2D bez : beziers) {
-			bez = new XCubicCurve2D(x + bez.x1, y + bez.y1, x + bez.ctrlx1, y + bez.ctrly1, x + bez.ctrlx2,
-					y + bez.ctrly2, x + bez.x2, y + bez.y2);
-			if (first) {
-				eps.movetoNoMacro(bez.x1, bez.y1);
-				first = dashed;
-			}
-			eps.curvetoNoMacro(bez.ctrlx1, bez.ctrly1, bez.ctrlx2, bez.ctrly2, bez.x2, bez.y2);
-		}
-		eps.closepathDot();
 	}
 
 	public UPath toUPath() {

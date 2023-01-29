@@ -52,7 +52,6 @@ import net.sourceforge.plantuml.cucadiagram.DisplayPositioned;
 import net.sourceforge.plantuml.cucadiagram.DisplayPositionned;
 import net.sourceforge.plantuml.graphic.HorizontalAlignment;
 import net.sourceforge.plantuml.graphic.VerticalAlignment;
-import net.sourceforge.plantuml.stats.StatsUtilsIncrement;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.ugraphic.ImageBuilder;
 import net.sourceforge.plantuml.ugraphic.color.ColorMapper;
@@ -178,10 +177,6 @@ public abstract class AbstractPSystem implements Diagram {
 //			}
 			return exportDiagramNow(os, index, fileFormatOption);
 		} finally {
-			if (OptionFlags.getInstance().isEnableStats()) {
-				StatsUtilsIncrement.onceMoreGenerate(System.currentTimeMillis() - now, getClass(),
-						fileFormatOption.getFileFormat());
-			}
 		}
 	}
 

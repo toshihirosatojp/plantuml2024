@@ -59,12 +59,8 @@ import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.awt.geom.XRectangle2D;
 import net.sourceforge.plantuml.baraye.EntityFactory;
 import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.baraye.IEntity;
-import net.sourceforge.plantuml.baraye.IGroup;
-import net.sourceforge.plantuml.baraye.ILeaf;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.cucadiagram.EntityPosition;
-import net.sourceforge.plantuml.cucadiagram.GroupRoot;
 import net.sourceforge.plantuml.cucadiagram.GroupType;
 import net.sourceforge.plantuml.cucadiagram.LeafType;
 import net.sourceforge.plantuml.cucadiagram.Link;
@@ -73,8 +69,6 @@ import net.sourceforge.plantuml.cucadiagram.Stereotype;
 import net.sourceforge.plantuml.cucadiagram.UnparsableGraphvizException;
 import net.sourceforge.plantuml.cucadiagram.dot.DotData;
 import net.sourceforge.plantuml.cucadiagram.dot.ExeState;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizVersion;
 import net.sourceforge.plantuml.cucadiagram.dot.Neighborhood;
 import net.sourceforge.plantuml.descdiagram.EntityImageDesignedDomain;
 import net.sourceforge.plantuml.descdiagram.EntityImageDomain;
@@ -130,23 +124,23 @@ import net.sourceforge.plantuml.utils.Log;
 
 public final class GeneralImageBuilder {
 
-	public static IEntityImage createEntityImageBlock(ILeaf leaf, ISkinParam skinParam,
+	public static IEntityImage createEntityImageBlock(EntityImp leaf, ISkinParam skinParam,
 			boolean isHideEmptyDescriptionForState, PortionShower portionShower, Bibliotekon bibliotekon,
-			GraphvizVersion graphvizVersion, UmlDiagramType umlDiagramType, Collection<Link> links) {
+			Object graphvizVersion, UmlDiagramType umlDiagramType, Collection<Link> links) {
 		final IEntityImage result = createEntityImageBlockInternal(leaf, skinParam, isHideEmptyDescriptionForState,
 				portionShower, bibliotekon, graphvizVersion, umlDiagramType, links);
 		// System.err.println("leaf " + leaf + " " + result.getClass());
 		return result;
 	}
 
-	private static IEntityImage createEntityImageBlockInternal(ILeaf leaf, ISkinParam skinParam,
+	private static IEntityImage createEntityImageBlockInternal(EntityImp leaf, ISkinParam skinParam,
 			boolean isHideEmptyDescriptionForState, PortionShower portionShower, Bibliotekon bibliotekon,
-			GraphvizVersion graphvizVersion, UmlDiagramType umlDiagramType, Collection<Link> links) {
+			Object graphvizVersion, UmlDiagramType umlDiagramType, Collection<Link> links) {
 		if (leaf.isRemoved())
 			throw new IllegalStateException();
 
 		if (leaf.getLeafType().isLikeClass()) {
-			final EntityImageClass entityImageClass = new EntityImageClass((ILeaf) leaf, skinParam, portionShower);
+			final EntityImageClass entityImageClass = new EntityImageClass((EntityImp) leaf, skinParam, portionShower);
 			final Neighborhood neighborhood = leaf.getNeighborhood();
 			if (neighborhood != null)
 				return new EntityImageProtected(entityImageClass, 20, neighborhood, bibliotekon);
@@ -317,7 +311,7 @@ public final class GeneralImageBuilder {
 		return result;
 	}
 
-	private boolean isOpalisable(IEntity entity) {
+	private boolean isOpalisable(EntityImp entity) {
 		if (strictUmlStyle)
 			return false;
 
@@ -387,87 +381,87 @@ public final class GeneralImageBuilder {
 	}
 
 	public IEntityImage buildImage(BaseFile basefile, String dotStrings[]) {
-		if (dotData.isDegeneratedWithFewEntities(0))
-			return new EntityImageSimpleEmpty(dotData.getSkinParam().getBackgroundColor());
-
-		if (dotData.isDegeneratedWithFewEntities(1) && dotData.getUmlDiagramType() != UmlDiagramType.STATE) {
-			final ILeaf single = dotData.getLeafs().iterator().next();
-			final IGroup group = single.getParentContainer();
-			if (group instanceof GroupRoot && single.getUSymbol() instanceof USymbolHexagon == false) {
-				final IEntityImage tmp = GeneralImageBuilder.createEntityImageBlock(single, dotData.getSkinParam(),
-						dotData.isHideEmptyDescriptionForState(), dotData, null, null, dotData.getUmlDiagramType(),
-						dotData.getLinks());
-				return new EntityImageDegenerated(tmp, getBackcolor());
-			}
-		}
-		dotData.removeIrrelevantSametail();
-		final DotStringFactory dotStringFactory = new DotStringFactory(stringBounder, dotData);
-
-		printGroups(dotStringFactory, dotData.getRootGroup());
-		printEntities(dotStringFactory, getUnpackagedEntities());
-
-		for (Link link : dotData.getLinks()) {
-			if (link.isRemoved())
-				continue;
-
-			try {
-				final ISkinParam skinParam = dotData.getSkinParam();
-				final FontConfiguration labelFont = getFontForLink(link, skinParam);
-
-				final SvekLine line = new SvekLine(link, dotStringFactory.getColorSequence(), skinParam, stringBounder,
-						labelFont, dotStringFactory.getBibliotekon(), pragma, dotStringFactory.getGraphvizVersion());
-
-				dotStringFactory.getBibliotekon().addLine(line);
-
-				if (isOpalisable(link.getEntity1())) {
-					final SvekNode node = dotStringFactory.getBibliotekon().getNode(link.getEntity1());
-					final SvekNode other = dotStringFactory.getBibliotekon().getNode(link.getEntity2());
-					if (other != null) {
-						((EntityImageNote) node.getImage()).setOpaleLine(line, node, other);
-						line.setOpale(true);
-					}
-				} else if (isOpalisable(link.getEntity2())) {
-					final SvekNode node = dotStringFactory.getBibliotekon().getNode(link.getEntity2());
-					final SvekNode other = dotStringFactory.getBibliotekon().getNode(link.getEntity1());
-					if (other != null) {
-						((EntityImageNote) node.getImage()).setOpaleLine(line, node, other);
-						line.setOpale(true);
-					}
-				}
-			} catch (IllegalStateException e) {
-				Logme.error(e);
-			}
-		}
-
-		if (dotStringFactory.illegalDotExe())
-			return error(dotStringFactory.getDotExe());
-
-		if (basefile == null && isSvekTrace()
-				&& (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE
-						|| SecurityUtils.getSecurityProfile() == SecurityProfile.LEGACY
-						|| SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX))
-			basefile = new BaseFile(null);
-
-		final String svg;
-		try {
-			svg = dotStringFactory.getSvg(basefile, dotStrings);
-		} catch (IOException e) {
-			return new GraphvizCrash(source.getPlainString(), GraphvizUtils.graphviz244onWindows(), e);
-		}
-		if (svg.length() == 0)
-			return new GraphvizCrash(source.getPlainString(), GraphvizUtils.graphviz244onWindows(),
-					new EmptySvgException());
-
-		final String graphvizVersion = extractGraphvizVersion(svg);
-		try {
-			dotStringFactory.solve(dotData.getEntityFactory(), svg);
-			final SvekResult result = new SvekResult(dotData, dotStringFactory);
-			this.maxX = dotStringFactory.getBibliotekon().getMaxX();
-			return result;
-		} catch (Exception e) {
-			Log.error("Exception " + e);
-			throw new UnparsableGraphvizException(e, graphvizVersion, svg, source.getPlainString());
-		}
+		throw new UnsupportedOperationException();
+//		if (dotData.isDegeneratedWithFewEntities(0))
+//			return new EntityImageSimpleEmpty(dotData.getSkinParam().getBackgroundColor());
+//
+//		if (dotData.isDegeneratedWithFewEntities(1) && dotData.getUmlDiagramType() != UmlDiagramType.STATE) {
+//			final EntityImp single = dotData.getLeafs().iterator().next();
+//			final EntityImp group = single.getParentContainer();
+//			if (group.instanceofGroupRoot() && single.getUSymbol() instanceof USymbolHexagon == false) {
+//				final IEntityImage tmp = GeneralImageBuilder.createEntityImageBlock(single, dotData.getSkinParam(),
+//						dotData.isHideEmptyDescriptionForState(), dotData, null, null, dotData.getUmlDiagramType(),
+//						dotData.getLinks());
+//				return new EntityImageDegenerated(tmp, getBackcolor());
+//			}
+//		}
+//		dotData.removeIrrelevantSametail();
+//		final DotStringFactory dotStringFactory = new DotStringFactory(stringBounder, dotData);
+//
+//		printGroups(dotStringFactory, dotData.getRootGroup());
+//		printEntities(dotStringFactory, getUnpackagedEntities());
+//
+//		for (Link link : dotData.getLinks()) {
+//			if (link.isRemoved())
+//				continue;
+//
+//			try {
+//				final ISkinParam skinParam = dotData.getSkinParam();
+//				final FontConfiguration labelFont = getFontForLink(link, skinParam);
+//
+//				final SvekLine line = new SvekLine(link, dotStringFactory.getColorSequence(), skinParam, stringBounder,
+//						labelFont, dotStringFactory.getBibliotekon(), pragma, dotStringFactory.getGraphvizVersion());
+//
+//				dotStringFactory.getBibliotekon().addLine(line);
+//
+//				if (isOpalisable(link.getEntity1())) {
+//					final SvekNode node = dotStringFactory.getBibliotekon().getNode(link.getEntity1());
+//					final SvekNode other = dotStringFactory.getBibliotekon().getNode(link.getEntity2());
+//					if (other != null) {
+//						((EntityImageNote) node.getImage()).setOpaleLine(line, node, other);
+//						line.setOpale(true);
+//					}
+//				} else if (isOpalisable(link.getEntity2())) {
+//					final SvekNode node = dotStringFactory.getBibliotekon().getNode(link.getEntity2());
+//					final SvekNode other = dotStringFactory.getBibliotekon().getNode(link.getEntity1());
+//					if (other != null) {
+//						((EntityImageNote) node.getImage()).setOpaleLine(line, node, other);
+//						line.setOpale(true);
+//					}
+//				}
+//			} catch (IllegalStateException e) {
+//				Logme.error(e);
+//			}
+//		}
+//
+//		if (dotStringFactory.illegalDotExe())
+//			return error(dotStringFactory.getDotExe());
+//
+//		if (basefile == null && isSvekTrace()
+//				&& (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE
+//						|| SecurityUtils.getSecurityProfile() == SecurityProfile.LEGACY
+//						|| SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX))
+//			basefile = new BaseFile(null);
+//
+//		final String svg;
+//		try {
+//			svg = dotStringFactory.getSvg(basefile, dotStrings);
+//		} catch (IOException e) {
+//			return new GraphvizCrash(source.getPlainString(), false, e);
+//		}
+//		if (svg.length() == 0)
+//			return new GraphvizCrash(source.getPlainString(), false, new EmptySvgException());
+//
+//		final String graphvizVersion = extractGraphvizVersion(svg);
+//		try {
+//			dotStringFactory.solve(dotData.getEntityFactory(), svg);
+//			final SvekResult result = new SvekResult(dotData, dotStringFactory);
+//			this.maxX = dotStringFactory.getBibliotekon().getMaxX();
+//			return result;
+//		} catch (Exception e) {
+//			Log.error("Exception " + e);
+//			throw new UnparsableGraphvizException(e, graphvizVersion, svg, source.getPlainString());
+//		}
 
 	}
 
@@ -490,7 +484,7 @@ public final class GeneralImageBuilder {
 		return null;
 	}
 
-	private Link onlyOneLink(IEntity ent) {
+	private Link onlyOneLink(EntityImp ent) {
 		Link single = null;
 		for (Link link : dotData.getLinks()) {
 			if (link.isInvis())
@@ -524,46 +518,10 @@ public final class GeneralImageBuilder {
 		return GraphicStrings.createForError(msg, false);
 	}
 
-	private void printEntities(DotStringFactory dotStringFactory, Collection<ILeaf> entities2) {
-		for (ILeaf ent : entities2) {
-			if (ent.isRemoved())
-				continue;
-
-			printEntity(dotStringFactory, ent);
-		}
-	}
-
-	private void printEntity(DotStringFactory dotStringFactory, ILeaf ent) {
-		if (ent.isRemoved())
-			throw new IllegalStateException();
-
-		final IEntityImage image = printEntityInternal(dotStringFactory, ent);
-		final SvekNode node = dotStringFactory.getBibliotekon().createNode(ent, image,
-				dotStringFactory.getColorSequence(), stringBounder);
-		dotStringFactory.addNode(node);
-	}
-
-	private IEntityImage printEntityInternal(DotStringFactory dotStringFactory, ILeaf ent) {
-		if (ent.isRemoved())
-			throw new IllegalStateException();
-
-		if (ent.getSvekImage() == null) {
-			ISkinParam skinParam = dotData.getSkinParam();
-			if (skinParam.sameClassWidth()) {
-				final double width = getMaxWidth();
-				((SkinParam) skinParam).setParamSameClassWidth(width);
-			}
-
-			return createEntityImageBlock(ent, skinParam, dotData.isHideEmptyDescriptionForState(), dotData,
-					dotStringFactory.getBibliotekon(), dotStringFactory.getGraphvizVersion(),
-					dotData.getUmlDiagramType(), dotData.getLinks());
-		}
-		return ent.getSvekImage();
-	}
 
 	private double getMaxWidth() {
 		double result = 0;
-		for (ILeaf ent : dotData.getLeafs()) {
+		for (EntityImp ent : dotData.getLeafs()) {
 			if (ent.getLeafType().isLikeClass() == false)
 				continue;
 
@@ -576,44 +534,15 @@ public final class GeneralImageBuilder {
 		return result;
 	}
 
-	private Collection<ILeaf> getUnpackagedEntities() {
-		final List<ILeaf> result = new ArrayList<>();
-		for (ILeaf ent : dotData.getLeafs())
+	private Collection<EntityImp> getUnpackagedEntities() {
+		final List<EntityImp> result = new ArrayList<>();
+		for (EntityImp ent : dotData.getLeafs())
 			if (dotData.getTopParent() == ent.getParentContainer())
 				result.add(ent);
 
 		return result;
 	}
 
-	private void printGroups(DotStringFactory dotStringFactory, IGroup parent) {
-		final Collection<IGroup> groups = dotData.getGroupHierarchy().getChildrenGroups(parent);
-		for (IGroup g : groups) {
-			if (g.isRemoved())
-				continue;
-
-			if (dotData.isEmpty(g) && g.getGroupType() == GroupType.PACKAGE) {
-				final ISkinParam skinParam = dotData.getSkinParam();
-				final ILeaf folder = entityFactory.createLeafForEmptyGroup(g, skinParam);
-				printEntity(dotStringFactory, folder);
-			} else {
-				printGroup(dotStringFactory, g);
-			}
-		}
-	}
-
-	private void printGroup(DotStringFactory dotStringFactory, IGroup g) {
-		if (g.getGroupType() == GroupType.CONCURRENT_STATE)
-			return;
-
-		final ClusterHeader clusterHeader = new ClusterHeader((EntityImp) g, dotData.getSkinParam(), dotData,
-				stringBounder);
-		dotStringFactory.openCluster(g, clusterHeader);
-		this.printEntities(dotStringFactory, g.getLeafsDirect());
-
-		printGroups(dotStringFactory, g);
-
-		dotStringFactory.closeCluster();
-	}
 
 	public String getWarningOrError(int warningOrError) {
 		if (maxX == null)

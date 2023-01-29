@@ -51,10 +51,8 @@ import net.sourceforge.plantuml.api.ApiWarning;
 import net.sourceforge.plantuml.command.regex.Matcher2;
 import net.sourceforge.plantuml.command.regex.MyPattern;
 import net.sourceforge.plantuml.command.regex.Pattern2;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
 import net.sourceforge.plantuml.preproc.Defines;
 import net.sourceforge.plantuml.security.SFile;
-import net.sourceforge.plantuml.stats.StatsUtils;
 import net.sourceforge.plantuml.ugraphic.color.ColorMapper;
 import net.sourceforge.plantuml.utils.Log;
 
@@ -119,7 +117,7 @@ public class Option {
 		if (arg.length == 0)
 			OptionFlags.getInstance().setGui(true);
 
-		initInclude(GraphvizUtils.getenvDefaultConfigFilename());
+		// initInclude(GraphvizUtils.getenvDefaultConfigFilename());
 		for (int i = 0; i < arg.length; i++) {
 			String s = arg[i];
 			if (s.equalsIgnoreCase("-headless")) {
@@ -184,8 +182,6 @@ public class Option {
 				i++;
 				if (i == arg.length)
 					continue;
-
-				GraphvizUtils.setDotExecutable(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg[i]));
 			} else if (s.equalsIgnoreCase("-charset")) {
 				i++;
 				if (i == arg.length)
@@ -336,10 +332,6 @@ public class Option {
 				OptionFlags.getInstance().setDumpStats(true);
 			} else if (s.equalsIgnoreCase("-loopstats")) {
 				OptionFlags.getInstance().setLoopStats(true);
-			} else if (s.equalsIgnoreCase("-enablestats")) {
-				OptionFlags.getInstance().setEnableStats(true);
-			} else if (s.equalsIgnoreCase("-disablestats")) {
-				OptionFlags.getInstance().setEnableStats(false);
 			} else if (s.equalsIgnoreCase("-extractstdlib")) {
 				OptionFlags.getInstance().setExtractStdLib(true);
 			} else if (s.equalsIgnoreCase("-stdlib")) {
@@ -348,12 +340,6 @@ public class Option {
 				OptionFlags.getInstance().setClipboard(true);
 			} else if (s.equalsIgnoreCase("-clipboardloop")) {
 				OptionFlags.getInstance().setClipboardLoop(true);
-			} else if (s.equalsIgnoreCase("-htmlstats")) {
-				StatsUtils.setHtmlStats(true);
-			} else if (s.equalsIgnoreCase("-xmlstats")) {
-				StatsUtils.setXmlStats(true);
-			} else if (s.equalsIgnoreCase("-realtimestats")) {
-				StatsUtils.setRealTimeStats(true);
 			} else if (s.equalsIgnoreCase("-useseparatorminus")) {
 				OptionFlags.getInstance().setFileSeparator("-");
 			} else if (s.equalsIgnoreCase("-splash")) {

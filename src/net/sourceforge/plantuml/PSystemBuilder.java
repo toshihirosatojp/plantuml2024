@@ -40,7 +40,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import net.sourceforge.plantuml.acearth.PSystemXearthFactory;
 import net.sourceforge.plantuml.activitydiagram.ActivityDiagramFactory;
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagramFactory3;
 import net.sourceforge.plantuml.api.PSystemFactory;
@@ -55,16 +54,12 @@ import net.sourceforge.plantuml.creole.legacy.PSystemCreoleFactory;
 import net.sourceforge.plantuml.dedication.PSystemDedicationFactory;
 import net.sourceforge.plantuml.definition.PSystemDefinitionFactory;
 import net.sourceforge.plantuml.descdiagram.DescriptionDiagramFactory;
-import net.sourceforge.plantuml.directdot.PSystemDotFactory;
-import net.sourceforge.plantuml.ditaa.PSystemDitaaFactory;
-import net.sourceforge.plantuml.donors.PSystemDonorsFactory;
 import net.sourceforge.plantuml.donors.PSystemSkinparameterListFactory;
 import net.sourceforge.plantuml.ebnf.PSystemEbnfFactory;
 import net.sourceforge.plantuml.eggs.PSystemAppleTwoFactory;
 import net.sourceforge.plantuml.eggs.PSystemCharlieFactory;
 import net.sourceforge.plantuml.eggs.PSystemColorsFactory;
 import net.sourceforge.plantuml.eggs.PSystemEggFactory;
-import net.sourceforge.plantuml.eggs.PSystemPathFactory;
 import net.sourceforge.plantuml.eggs.PSystemRIPFactory;
 import net.sourceforge.plantuml.eggs.PSystemWelcomeFactory;
 import net.sourceforge.plantuml.emoji.PSystemListEmojiFactory;
@@ -75,31 +70,22 @@ import net.sourceforge.plantuml.font.PSystemListFontsFactory;
 import net.sourceforge.plantuml.gitlog.GitDiagramFactory;
 import net.sourceforge.plantuml.hcl.HclDiagramFactory;
 import net.sourceforge.plantuml.help.HelpFactory;
-import net.sourceforge.plantuml.jcckit.PSystemJcckitFactory;
 import net.sourceforge.plantuml.jsondiagram.JsonDiagramFactory;
 import net.sourceforge.plantuml.math.PSystemLatexFactory;
 import net.sourceforge.plantuml.math.PSystemMathFactory;
 import net.sourceforge.plantuml.mindmap.MindMapDiagramFactory;
 import net.sourceforge.plantuml.nwdiag.NwDiagramFactory;
-import net.sourceforge.plantuml.openiconic.PSystemListOpenIconicFactory;
-import net.sourceforge.plantuml.openiconic.PSystemOpenIconicFactory;
 import net.sourceforge.plantuml.oregon.PSystemOregonFactory;
 import net.sourceforge.plantuml.project.GanttDiagramFactory;
 import net.sourceforge.plantuml.regex.PSystemRegexFactory;
 import net.sourceforge.plantuml.salt.PSystemSaltFactory2;
-import net.sourceforge.plantuml.security.SecurityProfile;
-import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.sequencediagram.SequenceDiagramFactory;
 import net.sourceforge.plantuml.sprite.ListSpriteDiagramFactory;
-import net.sourceforge.plantuml.sprite.PSystemListInternalSpritesFactory;
-import net.sourceforge.plantuml.sprite.StdlibDiagramFactory;
 import net.sourceforge.plantuml.statediagram.StateDiagramFactory;
-import net.sourceforge.plantuml.stats.StatsUtilsIncrement;
 import net.sourceforge.plantuml.sudoku.PSystemSudokuFactory;
 import net.sourceforge.plantuml.timingdiagram.TimingDiagramFactory;
 import net.sourceforge.plantuml.utils.Log;
 import net.sourceforge.plantuml.utils.StringLocated;
-import net.sourceforge.plantuml.version.License;
 import net.sourceforge.plantuml.version.PSystemLicenseFactory;
 import net.sourceforge.plantuml.version.PSystemVersionFactory;
 import net.sourceforge.plantuml.wbs.WBSDiagramFactory;
@@ -148,9 +134,6 @@ public class PSystemBuilder {
 			result = PSystemErrorUtils.merge(errors);
 			return result;
 		} finally {
-			if (result != null && OptionFlags.getInstance().isEnableStats()) {
-				StatsUtilsIncrement.onceMoreParse(System.currentTimeMillis() - now, result.getClass());
-			}
 			Log.info("Compilation duration " + (System.currentTimeMillis() - now));
 			RegexConcat.printCacheInfo();
 		}
@@ -167,57 +150,43 @@ public class PSystemBuilder {
 		factories.add(new DescriptionDiagramFactory());
 		factories.add(new StateDiagramFactory());
 		factories.add(new ActivityDiagramFactory3());
-		// factories.add(new CompositeDiagramFactory(skinParam));
+
 		factories.add(new BpmDiagramFactory(DiagramType.BPM));
-		// factories.add(new PostIdDiagramFactory());
+
 		factories.add(new PSystemLicenseFactory());
 		factories.add(new PSystemVersionFactory());
-		factories.add(new PSystemDonorsFactory());
+
 		factories.add(new PSystemSkinparameterListFactory());
 		factories.add(new PSystemListFontsFactory());
 		factories.add(new PSystemListEmojiFactory());
-		factories.add(new PSystemOpenIconicFactory());
-		factories.add(new PSystemListOpenIconicFactory());
-		factories.add(new PSystemListInternalSpritesFactory());
+
 		factories.add(new PSystemSaltFactory2(DiagramType.SALT));
 		factories.add(new PSystemSaltFactory2(DiagramType.UML));
-		factories.add(new PSystemDotFactory(DiagramType.DOT));
-		factories.add(new PSystemDotFactory(DiagramType.UML));
+
 		factories.add(new NwDiagramFactory(DiagramType.NW));
 		factories.add(new NwDiagramFactory(DiagramType.UML));
 		factories.add(new MindMapDiagramFactory());
 		factories.add(new WBSDiagramFactory());
-		factories.add(new PSystemDitaaFactory(DiagramType.DITAA));
-		factories.add(new PSystemDitaaFactory(DiagramType.UML));
-		if (License.getCurrent() == License.GPL || License.getCurrent() == License.GPLV2) {
-			factories.add(new PSystemJcckitFactory(DiagramType.JCCKIT));
-			factories.add(new PSystemJcckitFactory(DiagramType.UML));
-			// factories.add(new PSystemLogoFactory());
-			factories.add(new PSystemSudokuFactory());
-		}
+
+		factories.add(new PSystemSudokuFactory());
+
 		factories.add(new PSystemDefinitionFactory());
 		factories.add(new ListSpriteDiagramFactory());
-		factories.add(new StdlibDiagramFactory());
+
 		factories.add(new PSystemMathFactory(DiagramType.MATH));
 		factories.add(new PSystemLatexFactory(DiagramType.LATEX));
-		// factories.add(new PSystemStatsFactory());
+
 		factories.add(new PSystemCreoleFactory());
 		factories.add(new PSystemEggFactory());
 		factories.add(new PSystemAppleTwoFactory());
 		factories.add(new PSystemRIPFactory());
-		// factories.add(new PSystemLostFactory());
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE) {
-			factories.add(new PSystemPathFactory());
-		}
+
 		factories.add(new PSystemOregonFactory());
 		factories.add(new PSystemCharlieFactory());
-		if (License.getCurrent() == License.GPL || License.getCurrent() == License.GPLV2) {
-			factories.add(new PSystemXearthFactory());
-		}
+
 		factories.add(new GanttDiagramFactory());
 		factories.add(new FlowDiagramFactory());
-		// factories.add(new PSystemTreeFactory(DiagramType.JUNGLE));
-		// factories.add(new PSystemCuteFactory(DiagramType.CUTE));
+
 		factories.add(new PSystemDedicationFactory());
 		factories.add(new TimingDiagramFactory());
 		factories.add(new HelpFactory());

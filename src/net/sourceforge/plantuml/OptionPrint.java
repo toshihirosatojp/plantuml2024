@@ -46,7 +46,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SecurityProfile;
 import net.sourceforge.plantuml.security.SecurityUtils;
@@ -58,16 +57,6 @@ import net.sourceforge.plantuml.version.Version;
 public class OptionPrint {
 
 	static public void printTestDot() throws InterruptedException {
-		final List<String> result = new ArrayList<>();
-		final int errorCode = GraphvizUtils.addDotStatus(result, false);
-		for (String s : result) {
-			if (errorCode == 0) {
-				System.out.println(s);
-			} else {
-				System.err.println(s);
-			}
-		}
-		exit(errorCode);
 	}
 
 	static public void printHelp() throws InterruptedException {
@@ -155,7 +144,8 @@ public class OptionPrint {
 		System.out.println("    -pipeimageindex N\tTo generate the Nth image with pipe option");
 		System.out.println("    -stdlib\t\tTo print standard library info");
 		System.out.println("    -extractstdlib\tTo extract PlantUML Standard Library into stdlib folder");
-		System.out.println("    -filedir xxx\tTo behave as if the PlantUML source is in this dir (only affects '-pipe' and PicoWeb 'POST /render')");
+		System.out.println(
+				"    -filedir xxx\tTo behave as if the PlantUML source is in this dir (only affects '-pipe' and PicoWeb 'POST /render')");
 		System.out.println("    -filename \"example.puml\"\tTo override %filename% variable");
 		System.out.println("    -preproc\t\tTo output preprocessor text of diagrams");
 		System.out.println("    -cypher\t\tTo cypher texts of diagrams so that you can share them");
@@ -190,11 +180,10 @@ public class OptionPrint {
 		}
 		System.out.println();
 		final List<String> result = new ArrayList<>();
-		final int errorCode = GraphvizUtils.addDotStatus(result, false);
 		for (String s : result) {
 			System.out.println(s);
 		}
-		exit(errorCode);
+		exit(0);
 	}
 
 	public static Collection<String> interestingProperties() {
@@ -231,7 +220,6 @@ public class OptionPrint {
 //		strings.add("Current Security Profile: " + SecurityUtils.getSecurityProfile());
 //		strings.add(SecurityUtils.getSecurityProfile().longDescription());
 		strings.add(" ");
-		strings.add("PLANTUML_LIMIT_SIZE: " + GraphvizUtils.getenvImageLimit());
 		if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE) {
 			strings.add("Processors: " + Runtime.getRuntime().availableProcessors());
 			final long freeMemory = Runtime.getRuntime().freeMemory();

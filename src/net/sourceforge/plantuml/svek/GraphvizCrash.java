@@ -45,7 +45,6 @@ import net.sourceforge.plantuml.OptionPrint;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
 import net.sourceforge.plantuml.flashcode.FlashCodeFactory;
 import net.sourceforge.plantuml.flashcode.FlashCodeUtils;
 import net.sourceforge.plantuml.fun.IconLoader;
@@ -147,12 +146,12 @@ public class GraphvizCrash extends AbstractTextBlock implements IEntityImage {
 		strings.add(" ");
 		addProperties(strings);
 		strings.add(" ");
-		try {
-			final String dotVersion = GraphvizUtils.dotVersion();
-			strings.add("Default dot version: " + dotVersion);
-		} catch (Throwable e) {
-			strings.add("Cannot determine dot version: " + e.toString());
-		}
+//		try {
+//			final String dotVersion = GraphvizUtils.dotVersion();
+//			strings.add("Default dot version: " + dotVersion);
+//		} catch (Throwable e) {
+//			strings.add("Cannot determine dot version: " + e.toString());
+//		}
 		pleaseGoTo(strings);
 		youShouldSendThisDiagram(strings);
 		if (flashCode != null)

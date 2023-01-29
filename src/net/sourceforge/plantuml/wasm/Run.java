@@ -30,42 +30,38 @@
  *
  *
  * Original Author:  Arnaud Roques
- * 
+ *
  *
  */
-package net.sourceforge.plantuml.activitydiagram;
+package net.sourceforge.plantuml.wasm;
 
-import java.util.Objects;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
-import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.cucadiagram.LeafType;
-import net.sourceforge.plantuml.utils.Direction;
+import net.sourceforge.plantuml.FileFormat;
+import net.sourceforge.plantuml.FileFormatOption;
+import net.sourceforge.plantuml.SourceStringReader;
+import net.sourceforge.plantuml.core.DiagramDescription;
 
-public class ConditionalContext {
+public class Run {
 
-	private final EntityImp branch;
-	private final Direction direction;
-	private final ConditionalContext parent;
+	public static void main(String[] argsArray) throws IOException {
+		final String formatString = argsArray[0];
+		final String pathOut = argsArray[1];
+		// final String uml = argsArray[2].replaceAll("\\\\n", "\n");
+		final String uml = argsArray[2] + "\n";
 
-	public ConditionalContext(ConditionalContext parent, EntityImp branch, Direction direction) {
-		this.branch = Objects.requireNonNull(branch);
-		if (branch.getLeafType() != LeafType.BRANCH) {
-			throw new IllegalArgumentException();
+		final SourceStringReader sr = new SourceStringReader(uml);
+		final FileOutputStream fos = new FileOutputStream(new File(pathOut));
+		final FileFormatOption format = new FileFormatOption(
+				"svg".equalsIgnoreCase(formatString) ? FileFormat.SVG : FileFormat.PNG);
+		DiagramDescription description = sr.outputImage(fos, format);
+		fos.close();
+		if (description.getDescription() != null && description.getDescription().contains("error")) {
+			System.exit(1);
 		}
-		this.direction = direction;
-		this.parent = parent;
-	}
+		System.exit(0);
 
-	public Direction getDirection() {
-		return direction;
 	}
-
-	public final ConditionalContext getParent() {
-		return parent;
-	}
-
-	public final EntityImp getBranch() {
-		return branch;
-	}
-
 }

@@ -46,13 +46,10 @@ import java.util.List;
 import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.OptionPrint;
 import net.sourceforge.plantuml.PlainStringsDiagram;
-import net.sourceforge.plantuml.Run;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.UmlSource;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.preproc.Stdlib;
-import net.sourceforge.plantuml.preproc2.PreprocessorUtils;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SImageIO;
 import net.sourceforge.plantuml.security.SecurityProfile;
@@ -165,19 +162,12 @@ public class PSystemVersion extends PlainStringsDiagram {
 			if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE) {
 				strings.add("Loaded from " + Version.getJarPath());
 			}
-			if (OptionFlags.getInstance().isWord()) {
-				strings.add("Word Mode");
-				strings.add("Command Line: " + Run.getCommandLine());
-				strings.add("Current Dir: " + new SFile(".").getAbsolutePath());
-				strings.add("plantuml.include.path: " + PreprocessorUtils.getenv(SecurityUtils.PATHS_INCLUDES));
-			}
 		}
 		strings.add(" ");
 		// strings.add("<b>Stdlib:");
 		// Stdlib.addInfoVersion(strings, false);
 		// strings.add(" ");
 
-		GraphvizUtils.addDotStatus(strings, true);
 		strings.add(" ");
 		for (String name : OptionPrint.interestingProperties()) {
 			strings.add(name);
@@ -239,7 +229,6 @@ public class PSystemVersion extends PlainStringsDiagram {
 	public static PSystemVersion createTestDot(UmlSource source) throws IOException {
 		final List<String> strings = new ArrayList<>();
 		strings.add(Version.fullDescription());
-		GraphvizUtils.addDotStatus(strings, true);
 		return new PSystemVersion(source, false, strings);
 	}
 

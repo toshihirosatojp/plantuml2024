@@ -40,11 +40,8 @@ import static net.sourceforge.plantuml.ugraphic.ImageBuilder.plainImageBuilder;
 import java.awt.Color;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -67,7 +64,6 @@ import net.sourceforge.plantuml.graphic.GraphicStrings;
 import net.sourceforge.plantuml.graphic.UDrawable;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.mjpeg.MJPEGGenerator;
-import net.sourceforge.plantuml.pdf.PdfConverter;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SImageIO;
 import net.sourceforge.plantuml.security.SecurityUtils;
@@ -269,15 +265,7 @@ public abstract class UmlDiagram extends TitledDiagram implements Diagram, Annot
 	private XDimension2D lastInfo;
 
 	private ImageData exportDiagramInternalPdf(OutputStream os, int index) throws IOException {
-		final File svg = FileUtils.createTempFileLegacy("pdf", ".svf");
-		final File pdfFile = FileUtils.createTempFileLegacy("pdf", ".pdf");
-		final ImageData result;
-		try (OutputStream fos = new BufferedOutputStream(new FileOutputStream(svg))) {
-			result = exportDiagram(fos, index, new FileFormatOption(FileFormat.SVG));
-		}
-		PdfConverter.convert(svg, pdfFile);
-		FileUtils.copyToStream(pdfFile, os);
-		return result;
+		return null;
 	}
 
 	protected abstract ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)

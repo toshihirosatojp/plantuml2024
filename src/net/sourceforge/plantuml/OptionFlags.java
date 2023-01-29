@@ -40,7 +40,6 @@ import java.io.PrintStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.sourceforge.plantuml.core.Diagram;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SecurityUtils;
@@ -79,11 +78,9 @@ public class OptionFlags {
 
 	public void reset() {
 		reset(false);
-		GraphvizUtils.setDotExecutable(null);
 	}
 
 	public final void setDotExecutable(String dotExecutable) {
-		GraphvizUtils.setDotExecutable(dotExecutable);
 	}
 
 	private OptionFlags() {
@@ -199,29 +196,6 @@ public class OptionFlags {
 		if (warnOrError == null) {
 			return;
 		}
-		synchronized (logDataInitized) {
-			if (logData == null && logDataInitized.get() == false) {
-				final String s = GraphvizUtils.getenvLogData();
-				if (s != null) {
-					setLogData(new SFile(s));
-				}
-				logDataInitized.set(true);
-			}
-
-			if (logData == null) {
-				return;
-			}
-			// final PSystemError systemError = (PSystemError) system;
-			try (PrintStream ps = SecurityUtils.createPrintStream(logData.createFileOutputStream(true))) {
-				ps.println("Start of " + file.getName());
-				ps.println(warnOrError);
-				ps.println("End of " + file.getName());
-				ps.println();
-			} catch (FileNotFoundException e) {
-				Log.error("Cannot open " + logData);
-				Logme.error(e);
-			}
-		}
 	}
 
 	public final void setLogData(SFile logData) {
@@ -301,14 +275,6 @@ public class OptionFlags {
 
 	private static boolean isTrue(final String value) {
 		return "on".equalsIgnoreCase(value) || "true".equalsIgnoreCase(value);
-	}
-
-	public boolean isEnableStats() {
-		return enableStats;
-	}
-
-	public void setEnableStats(boolean enableStats) {
-		this.enableStats = enableStats;
 	}
 
 	public final long getTimeoutMs() {

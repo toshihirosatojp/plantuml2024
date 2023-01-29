@@ -55,8 +55,6 @@ import net.sourceforge.plantuml.Url;
 import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.awt.geom.XPoint2D;
 import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.baraye.IEntity;
-import net.sourceforge.plantuml.baraye.IGroup;
 import net.sourceforge.plantuml.command.Position;
 import net.sourceforge.plantuml.creole.CreoleMode;
 import net.sourceforge.plantuml.cucadiagram.CucaNote;
@@ -71,7 +69,6 @@ import net.sourceforge.plantuml.cucadiagram.LinkType;
 import net.sourceforge.plantuml.cucadiagram.NoteLinkStrategy;
 import net.sourceforge.plantuml.cucadiagram.Stereotype;
 import net.sourceforge.plantuml.cucadiagram.dot.DotSplines;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizVersion;
 import net.sourceforge.plantuml.descdiagram.command.StringWithArrow;
 import net.sourceforge.plantuml.graphic.FontConfiguration;
 import net.sourceforge.plantuml.graphic.HorizontalAlignment;
@@ -206,7 +203,7 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 		return ang;
 	}
 
-	private Cluster getCluster2(Bibliotekon bibliotekon, IEntity entityMutable) {
+	private Cluster getCluster2(Bibliotekon bibliotekon, EntityImp entityMutable) {
 		for (Cluster cl : bibliotekon.allCluster())
 			if (cl.getGroups().contains(entityMutable))
 				return cl;
@@ -215,12 +212,12 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 	}
 
 	public SvekLine(Link link, ColorSequence colorSequence, ISkinParam skinParam, StringBounder stringBounder,
-			FontConfiguration font, Bibliotekon bibliotekon, Pragma pragma, GraphvizVersion graphvizVersion) {
+			FontConfiguration font, Bibliotekon bibliotekon, Pragma pragma, Object graphvizVersion) {
 
-		if (graphvizVersion.useShieldForQuantifier() && link.getLinkArg().getQuantifier1() != null)
+		if (link.getLinkArg().getQuantifier1() != null)
 			((EntityImp) link.getEntity1()).ensureMargins(Margins.uniform(16));
 
-		if (graphvizVersion.useShieldForQuantifier() && link.getLinkArg().getQuantifier2() != null)
+		if (link.getLinkArg().getQuantifier2() != null)
 			((EntityImp) link.getEntity2()).ensureMargins(Margins.uniform(16));
 
 		if (link.getLinkArg().getKal1() != null)
@@ -361,82 +358,8 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 		return link.getLinkArrow();
 	}
 
-	public void appendLine(GraphvizVersion graphvizVersion, StringBuilder sb, DotMode dotMode, DotSplines dotSplines) {
-		// Log.println("inverted=" + isInverted());
-		// if (isInverted()) {
-		// sb.append(endUid);
-		// sb.append("->");
-		// sb.append(startUid);
-		// } else {
-		sb.append(startUid.getFullString());
-		sb.append("->");
-		sb.append(endUid.getFullString());
-		// }
-		sb.append("[");
-		final LinkType linkType = link.getTypePatchCluster();
-		String decoration = linkType.getSpecificDecorationSvek();
-		if (decoration.length() > 0 && decoration.endsWith(",") == false)
-			decoration += ",";
-
-		sb.append(decoration);
-
-		int length = link.getLength();
-		if (graphvizVersion.ignoreHorizontalLinks() && length == 1)
-			length = 2;
-
-		if (useRankSame) {
-			if (pragma.horizontalLineBetweenDifferentPackageAllowed() || link.isInvis() || length != 1) {
-				// if (graphvizVersion.isJs() == false) {
-				sb.append("minlen=" + (length - 1));
-				sb.append(",");
-				// }
-			}
-		} else {
-			sb.append("minlen=" + (length - 1));
-			sb.append(",");
-		}
-		sb.append("color=\"" + StringUtils.sharp000000(lineColor) + "\"");
-		if (hasNoteLabelText() || link.getLinkConstraint() != null) {
-			sb.append(",");
-			if (graphvizVersion.useXLabelInsteadOfLabel() || dotMode == DotMode.NO_LEFT_RIGHT_AND_XLABEL
-					|| dotSplines == DotSplines.ORTHO) {
-				sb.append("xlabel=<");
-			} else {
-				sb.append("label=<");
-			}
-			XDimension2D dimNote = hasNoteLabelText() ? labelText.calculateDimension(stringBounder) : CONSTRAINT_SPOT;
-			dimNote = dimNote.delta(2 * labelShield);
-
-			appendTable(sb, eventuallyDivideByTwo(dimNote), noteLabelColor, graphvizVersion);
-			sb.append(">");
-		}
-
-		if (startTailText != null) {
-			sb.append(",");
-			sb.append("taillabel=<");
-			appendTable(sb, startTailText.calculateDimension(stringBounder), startTailColor, graphvizVersion);
-			sb.append(">");
-		}
-		if (endHeadText != null) {
-			sb.append(",");
-			sb.append("headlabel=<");
-			appendTable(sb, endHeadText.calculateDimension(stringBounder), endHeadColor, graphvizVersion);
-			sb.append(">");
-		}
-
-		if (link.isInvis()) {
-			sb.append(",");
-			sb.append("style=invis");
-		}
-
-		if (link.isConstraint() == false || link.hasTwoEntryPointsSameContainer())
-			sb.append(",constraint=false");
-
-		if (link.getSametail() != null)
-			sb.append(",sametail=" + link.getSametail());
-
-		sb.append("];");
-		SvekUtils.println(sb);
+	public void appendLine(Object graphvizVersion, StringBuilder sb, DotMode dotMode, DotSplines dotSplines) {
+		throw new UnsupportedOperationException();
 	}
 
 	private XDimension2D eventuallyDivideByTwo(XDimension2D dim) {
@@ -457,7 +380,7 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 		return null;
 	}
 
-	public static void appendTable(StringBuilder sb, XDimension2D dim, int col, GraphvizVersion graphvizVersion) {
+	public static void appendTable(StringBuilder sb, XDimension2D dim, int col, Object graphvizVersion) {
 		final int w = (int) dim.getWidth();
 		final int h = (int) dim.getHeight();
 		appendTable(sb, w, h, col);
@@ -672,7 +595,7 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 			ug.startUrl(url);
 
 		if (link.isAutoLinkOfAGroup()) {
-			final Cluster cl = bibliotekon.getCluster((IGroup) link.getEntity1());
+			final Cluster cl = bibliotekon.getCluster((EntityImp) link.getEntity1());
 			if (cl != null) {
 				x += cl.getClusterPosition().getWidth();
 				x -= dotPath.getStartPoint().getX() - cl.getClusterPosition().getMinX();
@@ -712,7 +635,7 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 
 		DotPath todraw = dotPath;
 		if (link.getEntity2().isGroup() && link.getEntity2().getUSymbol() instanceof USymbolFolder) {
-			final Cluster endCluster = bibliotekon.getCluster((IGroup) link.getEntity2());
+			final Cluster endCluster = bibliotekon.getCluster((EntityImp) link.getEntity2());
 			if (endCluster != null) {
 				final double deltaFolderH = endCluster.checkFolderPosition(dotPath.getEndPoint(),
 						ug.getStringBounder());
@@ -993,7 +916,7 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 		return link.isHorizontalSolitary();
 	}
 
-	public boolean isLinkFromOrTo(IEntity group) {
+	public boolean isLinkFromOrTo(EntityImp group) {
 		return link.getEntity1() == group || link.getEntity2() == group;
 	}
 
@@ -1018,7 +941,7 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 		return link.getEntity1() == link.getEntity2();
 	}
 
-	public XPoint2D getMyPoint(IEntity entity) {
+	public XPoint2D getMyPoint(EntityImp entity) {
 		if (link.getEntity1() == entity)
 			return moveDelta(dotPath.getStartPoint());
 
@@ -1054,7 +977,7 @@ public class SvekLine implements Moveable, Hideable, GuideLine {
 		return new XPoint2D(dx + end.getX(), dy + end.getY());
 	}
 
-	public IEntity getOther(IEntity entity) {
+	public EntityImp getOther(EntityImp entity) {
 		if (link.contains(entity))
 			return link.getOther(entity);
 

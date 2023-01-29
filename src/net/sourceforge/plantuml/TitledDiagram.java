@@ -39,8 +39,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
-import net.sourceforge.plantuml.anim.Animation;
-import net.sourceforge.plantuml.anim.AnimationDecoder;
 import net.sourceforge.plantuml.api.ApiStable;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.core.Diagram;
@@ -81,7 +79,7 @@ public abstract class TitledDiagram extends AbstractPSystem implements Diagram, 
 
 	private final SkinParam skinParam;
 
-	private Animation animation;
+	private Object animation;
 
 	private final Pragma pragma = new Pragma();
 
@@ -253,16 +251,6 @@ public abstract class TitledDiagram extends AbstractPSystem implements Diagram, 
 	}
 
 	final public void setAnimation(Iterable<CharSequence> animationData) {
-//		try {
-		final AnimationDecoder animationDecoder = new AnimationDecoder(animationData);
-		this.animation = Animation.create(animationDecoder.decode());
-//		} catch (ScriptException e) {
-//			Logme.error(e);
-//		}
-	}
-
-	final public Animation getAnimation() {
-		return animation;
 	}
 
 	@Override

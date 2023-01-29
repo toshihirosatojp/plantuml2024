@@ -71,7 +71,6 @@ import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.ugraphic.ImageBuilder;
 import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.xmi.SequenceDiagramXmiMaker;
 
 public class SequenceDiagram extends UmlDiagram {
 
@@ -256,9 +255,6 @@ public class SequenceDiagram extends UmlDiagram {
 
 		if (fileFormat == FileFormat.ATXT || fileFormat == FileFormat.UTXT)
 			return new SequenceDiagramTxtMaker(this, fileFormat);
-
-		if (fileFormat.name().startsWith("XMI"))
-			return new SequenceDiagramXmiMaker(this, fileFormat);
 
 		if (modeTeoz())
 			return new SequenceDiagramFileMakerTeoz(this, skin2, fileFormatOption, index);

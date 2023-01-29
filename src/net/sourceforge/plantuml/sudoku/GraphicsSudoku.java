@@ -50,7 +50,6 @@ import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.eps.EpsStrategy;
 import net.sourceforge.plantuml.graphic.FontConfiguration;
 import net.sourceforge.plantuml.graphic.HorizontalAlignment;
 import net.sourceforge.plantuml.graphic.StringBounder;
@@ -63,10 +62,8 @@ import net.sourceforge.plantuml.ugraphic.URectangle;
 import net.sourceforge.plantuml.ugraphic.UTranslate;
 import net.sourceforge.plantuml.ugraphic.color.ColorMapper;
 import net.sourceforge.plantuml.ugraphic.color.HColors;
-import net.sourceforge.plantuml.ugraphic.eps.UGraphicEps;
 import net.sourceforge.plantuml.ugraphic.g2d.UGraphicG2d;
 import net.sourceforge.plantuml.ugraphic.svg.UGraphicSvg;
-import net.sourceforge.plantuml.ugraphic.tikz.UGraphicTikz;
 
 public class GraphicsSudoku {
 
@@ -79,11 +76,7 @@ public class GraphicsSudoku {
 	}
 
 	public ImageData writeImageEps(OutputStream os) throws IOException {
-		final UGraphicEps ug = new UGraphicEps(HColors.WHITE, ColorMapper.IDENTITY,
-				FileFormat.EPS_TEXT.getDefaultStringBounder(), EpsStrategy.WITH_MACRO_AND_TEXT);
-		drawInternal(ug);
-		os.write(ug.getEPSCode().getBytes());
-		return ImageDataSimple.ok();
+		return null;
 	}
 
 	public ImageData writeImageSvg(OutputStream os) throws IOException {
@@ -96,11 +89,7 @@ public class GraphicsSudoku {
 	}
 
 	public ImageData writeImageLatex(OutputStream os, FileFormat fileFormat) throws IOException {
-		final UGraphicTikz ug = new UGraphicTikz(HColors.WHITE, ColorMapper.IDENTITY,
-				FileFormat.LATEX.getDefaultStringBounder(), 1, fileFormat == FileFormat.LATEX);
-		drawInternal(ug);
-		ug.writeToStream(os, null, -1); // dpi param is not used
-		return ImageDataSimple.ok();
+		return null;
 	}
 
 	public ImageData writeImagePng(OutputStream os) throws IOException {

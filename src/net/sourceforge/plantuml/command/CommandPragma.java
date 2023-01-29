@@ -44,7 +44,6 @@ import net.sourceforge.plantuml.command.regex.RegexConcat;
 import net.sourceforge.plantuml.command.regex.RegexLeaf;
 import net.sourceforge.plantuml.command.regex.RegexOptional;
 import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
@@ -91,9 +90,6 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 			}
 			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("elk")) {
 				system.setUseElk(true);
-			}
-			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase(GraphvizUtils.VIZJS)) {
-				system.getSkinParam().setUseVizJs(true);
 			}
 		}
 		return CommandExecutionResult.ok();

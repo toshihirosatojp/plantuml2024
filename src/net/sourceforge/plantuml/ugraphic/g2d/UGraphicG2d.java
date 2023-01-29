@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.ugraphic.g2d;
 
 import java.awt.Graphics2D;
 import java.awt.Shape;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -51,7 +50,6 @@ import java.util.Set;
 
 import net.sourceforge.plantuml.EnsureVisible;
 import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.anim.AffineTransformation;
 import net.sourceforge.plantuml.graphic.StringBounder;
 import net.sourceforge.plantuml.png.PngIO;
 import net.sourceforge.plantuml.posimo.DotPath;
@@ -123,18 +121,18 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 	}
 
 	public UGraphicG2d(HColor defaultBackground, ColorMapper colorMapper, StringBounder stringBounder, Graphics2D g2d,
-			double dpiFactor, AffineTransformation affineTransform, double dx, double dy) {
+			double dpiFactor, Object affineTransform, double dx, double dy) {
 		super(defaultBackground, colorMapper, stringBounder, g2d);
 		this.hasAffineTransform = affineTransform != null;
 		this.dpiFactor = dpiFactor;
 		if (dpiFactor != 1.0)
 			g2d.scale(dpiFactor, dpiFactor);
 
-		if (this.hasAffineTransform) {
-			if (dx != 0 || dy != 0)
-				getGraphicObject().transform(AffineTransform.getTranslateInstance(dx, dy));
-			getGraphicObject().transform(affineTransform.getAffineTransform());
-		}
+//		if (this.hasAffineTransform) {
+//			if (dx != 0 || dy != 0)
+//				getGraphicObject().transform(AffineTransform.getTranslateInstance(dx, dy));
+//			getGraphicObject().transform(affineTransform.getAffineTransform());
+//		}
 		register(dpiFactor);
 	}
 

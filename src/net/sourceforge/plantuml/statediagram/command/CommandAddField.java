@@ -35,8 +35,7 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
-import net.sourceforge.plantuml.baraye.CucaDiagram;
-import net.sourceforge.plantuml.baraye.IEntity;
+import net.sourceforge.plantuml.baraye.EntityImp;
 import net.sourceforge.plantuml.baraye.Quark;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -45,8 +44,8 @@ import net.sourceforge.plantuml.command.regex.RegexConcat;
 import net.sourceforge.plantuml.command.regex.RegexLeaf;
 import net.sourceforge.plantuml.command.regex.RegexOr;
 import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Ident;
+import net.sourceforge.plantuml.cucadiagram.Display;
+import net.sourceforge.plantuml.cucadiagram.LeafType;
 import net.sourceforge.plantuml.statediagram.StateDiagram;
 import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
 import net.sourceforge.plantuml.utils.LineLocation;
@@ -72,14 +71,19 @@ public class CommandAddField extends SingleLineCommand2<StateDiagram> {
 			throws NoSuchColorException {
 		final String codeString = arg.getLazzy("CODE", 0);
 
-		final Quark quark = diagram.currentQuark();
-		Quark child = quark.childIfExists(codeString);
-		if (child == null && quark.getName().equals(codeString))
-			child = quark;
-		if (child == null)
-			child = quark.child(codeString);
+//		final Quark quark = diagram.currentQuark();
+//		Quark child = quark.childIfExists(codeString);
+//		if (child == null && quark.getName().equals(codeString))
+//			child = quark;
+//		if (child == null)
+//			child = quark.child(codeString);
+//
+//		final IEntity entity = diagram.getOrCreateLeaf(child, child, null, null);
 
-		final IEntity entity = diagram.getOrCreateLeaf(child, child, null, null);
+		final Quark quark = diagram.quarkInContext(diagram.cleanIdForQuark(codeString), false);
+		EntityImp entity = (EntityImp) quark.getData();
+		if (entity == null)
+			entity = diagram.reallyCreateLeaf(quark, Display.getWithNewlines(quark), LeafType.STATE, null);
 
 		final String field = arg.get("FIELD", 0);
 
@@ -90,18 +94,17 @@ public class CommandAddField extends SingleLineCommand2<StateDiagram> {
 	@Override
 	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg)
 			throws NoSuchColorException {
-		if (CucaDiagram.QUARK)
-			return executeArgQuark(diagram, location, arg);
+		return executeArgQuark(diagram, location, arg);
 
-		final String codeString = arg.getLazzy("CODE", 0);
-		final String field = arg.get("FIELD", 0);
-
-		Ident ident = diagram.buildLeafIdent(codeString);
-		final Code code = diagram.buildCode(codeString);
-		final IEntity entity = diagram.getOrCreateLeaf(ident, code, null, null);
-
-		entity.getBodier().addFieldOrMethod(field);
-		return CommandExecutionResult.ok();
+//		final String codeString = arg.getLazzy("CODE", 0);
+//		final String field = arg.get("FIELD", 0);
+//
+//		Quark ident = diagram.buildLeafIdent(codeString);
+//		final Quark code = diagram.buildCode(codeString);
+//		final IEntity entity = diagram.getOrCreateLeaf(ident, code, null, null);
+//
+//		entity.getBodier().addFieldOrMethod(field);
+//		return CommandExecutionResult.ok();
 	}
 
 }

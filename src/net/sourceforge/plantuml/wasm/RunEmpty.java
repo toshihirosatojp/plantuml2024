@@ -30,42 +30,20 @@
  *
  *
  * Original Author:  Arnaud Roques
- * 
+ *
  *
  */
-package net.sourceforge.plantuml.activitydiagram;
+package net.sourceforge.plantuml.wasm;
 
-import java.util.Objects;
+import java.io.IOException;
 
-import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.cucadiagram.LeafType;
-import net.sourceforge.plantuml.utils.Direction;
+import net.sourceforge.plantuml.version.Version;
 
-public class ConditionalContext {
+public class RunEmpty {
 
-	private final EntityImp branch;
-	private final Direction direction;
-	private final ConditionalContext parent;
-
-	public ConditionalContext(ConditionalContext parent, EntityImp branch, Direction direction) {
-		this.branch = Objects.requireNonNull(branch);
-		if (branch.getLeafType() != LeafType.BRANCH) {
-			throw new IllegalArgumentException();
-		}
-		this.direction = direction;
-		this.parent = parent;
-	}
-
-	public Direction getDirection() {
-		return direction;
-	}
-
-	public final ConditionalContext getParent() {
-		return parent;
-	}
-
-	public final EntityImp getBranch() {
-		return branch;
+	public static void main(String[] argsArray) throws IOException {
+		System.out.println(Version.versionString());
+		System.err.println(Version.versionString());
 	}
 
 }

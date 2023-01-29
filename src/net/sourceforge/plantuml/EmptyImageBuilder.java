@@ -45,7 +45,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
 import net.sourceforge.plantuml.graphic.StringBounder;
 import net.sourceforge.plantuml.ugraphic.UAntiAliasing;
 import net.sourceforge.plantuml.ugraphic.color.ColorMapper;
@@ -74,14 +73,6 @@ public class EmptyImageBuilder {
 		if (width <= 0 || height <= 0)
 			throw new IllegalArgumentException("width and height must be positive");
 
-		if (width > GraphvizUtils.getenvImageLimit()) {
-			Log.info("Width too large " + width + ". You should set PLANTUML_LIMIT_SIZE");
-			width = GraphvizUtils.getenvImageLimit();
-		}
-		if (height > GraphvizUtils.getenvImageLimit()) {
-			Log.info("Height too large " + height + ". You should set PLANTUML_LIMIT_SIZE");
-			height = GraphvizUtils.getenvImageLimit();
-		}
 		this.background = background;
 		this.stringBounder = stringBounder;
 		Log.info("Creating image " + width + "x" + height);

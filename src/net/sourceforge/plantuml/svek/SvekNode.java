@@ -42,8 +42,6 @@ import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.awt.geom.XPoint2D;
 import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.baraye.IGroup;
-import net.sourceforge.plantuml.baraye.ILeaf;
 import net.sourceforge.plantuml.cucadiagram.EntityPosition;
 import net.sourceforge.plantuml.cucadiagram.Together;
 import net.sourceforge.plantuml.graphic.StringBounder;
@@ -92,7 +90,7 @@ public class SvekNode implements Positionable, Hideable {
 		return super.toString() + " " + image + " " + type;
 	}
 
-	private final ILeaf leaf;
+	private final EntityImp leaf;
 	// private final IGroup group;
 
 	public final Together getTogether() {
@@ -101,7 +99,7 @@ public class SvekNode implements Positionable, Hideable {
 		return leaf.getTogether();
 	}
 
-	SvekNode(ILeaf ent, IEntityImage image, ColorSequence colorSequence, StringBounder stringBounder) {
+	SvekNode(EntityImp ent, IEntityImage image, ColorSequence colorSequence, StringBounder stringBounder) {
 		this.stringBounder = stringBounder;
 		this.entityPosition = ent.getEntityPosition();
 		this.image = image;

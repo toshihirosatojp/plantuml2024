@@ -39,8 +39,6 @@ import static net.sourceforge.plantuml.SkinParam.DEFAULT_PRESERVE_ASPECT_RATIO;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -48,9 +46,6 @@ import java.io.OutputStream;
 import java.util.Random;
 import java.util.Set;
 
-import javax.swing.ImageIcon;
-
-import net.sourceforge.plantuml.AnimatedGifEncoder;
 import net.sourceforge.plantuml.AnnotatedBuilder;
 import net.sourceforge.plantuml.AnnotatedWorker;
 import net.sourceforge.plantuml.CMapData;
@@ -59,7 +54,6 @@ import net.sourceforge.plantuml.CornerParam;
 import net.sourceforge.plantuml.EmptyImageBuilder;
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.FileUtils;
 import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.LineParam;
 import net.sourceforge.plantuml.OptionFlags;
@@ -68,20 +62,14 @@ import net.sourceforge.plantuml.Scale;
 import net.sourceforge.plantuml.SvgCharSizeHack;
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.anim.AffineTransformation;
-import net.sourceforge.plantuml.anim.Animation;
 import net.sourceforge.plantuml.api.ImageDataComplex;
 import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.braille.UGraphicBraille;
 import net.sourceforge.plantuml.core.ImageData;
-import net.sourceforge.plantuml.eps.EpsStrategy;
 import net.sourceforge.plantuml.graphic.StringBounder;
 import net.sourceforge.plantuml.graphic.TextBlock;
 import net.sourceforge.plantuml.graphic.UDrawable;
-import net.sourceforge.plantuml.mjpeg.MJPEGGenerator;
-import net.sourceforge.plantuml.security.SFile;
-import net.sourceforge.plantuml.security.SImageIO;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.PName;
@@ -96,18 +84,14 @@ import net.sourceforge.plantuml.ugraphic.color.HColorGradient;
 import net.sourceforge.plantuml.ugraphic.color.HColorSimple;
 import net.sourceforge.plantuml.ugraphic.color.HColors;
 import net.sourceforge.plantuml.ugraphic.debug.UGraphicDebug;
-import net.sourceforge.plantuml.ugraphic.eps.UGraphicEps;
 import net.sourceforge.plantuml.ugraphic.g2d.UGraphicG2d;
 import net.sourceforge.plantuml.ugraphic.hand.UGraphicHandwritten;
-import net.sourceforge.plantuml.ugraphic.html5.UGraphicHtml5;
 import net.sourceforge.plantuml.ugraphic.svg.UGraphicSvg;
-import net.sourceforge.plantuml.ugraphic.tikz.UGraphicTikz;
 import net.sourceforge.plantuml.ugraphic.txt.UGraphicTxt;
-import net.sourceforge.plantuml.ugraphic.visio.UGraphicVdx;
 
 public class ImageBuilder {
 
-	private Animation animation;
+	private Object animation;
 	private boolean annotations;
 	private HColor backcolor = getDefaultHBackColor();
 	// private ColorMapper colorMapper;
@@ -215,7 +199,7 @@ public class ImageBuilder {
 	public ImageBuilder styled(TitledDiagram diagram) {
 		skinParam = diagram.getSkinParam();
 		stringBounder = fileFormatOption.getDefaultStringBounder(skinParam);
-		animation = diagram.getAnimation();
+		animation = null;
 		annotations = true;
 		backcolor = diagram.calculateBackColor();
 		margin = calculateMargin(diagram);
@@ -236,14 +220,7 @@ public class ImageBuilder {
 			udrawable = annotatedWorker.addAdd((TextBlock) udrawable);
 		}
 
-		switch (fileFormatOption.getFileFormat()) {
-		case MJPEG:
-			return writeImageMjpeg(os);
-		case ANIMATED_GIF:
-			return writeImageAnimatedGif(os);
-		default:
-			return writeImageInternal(os, animation);
-		}
+		return writeImageInternal(os, null);
 	}
 
 	public byte[] writeByteArray() throws IOException {
@@ -253,16 +230,11 @@ public class ImageBuilder {
 		}
 	}
 
-	private ImageData writeImageInternal(OutputStream os, Animation animationArg) throws IOException {
+	private ImageData writeImageInternal(OutputStream os, Object animationArg) throws IOException {
 		XDimension2D dim = getFinalDimension();
 		double dx = 0;
 		double dy = 0;
 		if (animationArg != null) {
-			final MinMax minmax = animationArg.getMinMax(dim);
-			animationArg.setDimension(dim);
-			dim = minmax.getDimension();
-			dx = -minmax.getMinX();
-			dy = -minmax.getMinY();
 		}
 		final Scale scale = titledDiagram == null ? null : titledDiagram.getScale();
 		final double scaleFactor = (scale == null ? 1 : scale.getScale(dim.getWidth(), dim.getHeight())) * getDpi()
@@ -342,64 +314,7 @@ public class ImageBuilder {
 //		}
 	}
 
-	private ImageData writeImageMjpeg(OutputStream os) throws IOException {
-
-		final XDimension2D dim = getFinalDimension();
-
-		final SFile f = new SFile("c:/tmp.avi");
-
-		final int nbframe = 100;
-
-		final MJPEGGenerator m = new MJPEGGenerator(f, getAviImage(null).getWidth(null),
-				getAviImage(null).getHeight(null), 12.0, nbframe);
-		for (int i = 0; i < nbframe; i++) {
-			// AffineTransform at = AffineTransform.getRotateInstance(1.0);
-			AffineTransform at = AffineTransform.getTranslateInstance(dim.getWidth() / 2, dim.getHeight() / 2);
-			at.rotate(90.0 * Math.PI / 180.0 * i / 100);
-			at.translate(-dim.getWidth() / 2, -dim.getHeight() / 2);
-			// final AffineTransform at = AffineTransform.getTranslateInstance(i, 0);
-			// final ImageIcon ii = new ImageIcon(getAviImage(at));
-			// m.addImage(ii.getImage());
-			throw new UnsupportedOperationException();
-		}
-		m.finishAVI();
-
-		FileUtils.copyToStream(f, os);
-
-		return createImageData(dim);
-	}
-
-	private ImageData writeImageAnimatedGif(OutputStream os) throws IOException {
-
-		final XDimension2D dim = getFinalDimension();
-
-		final MinMax minmax = animation.getMinMax(dim);
-
-		final AnimatedGifEncoder e = new AnimatedGifEncoder();
-		// e.setQuality(1);
-		e.setRepeat(0);
-		e.start(os);
-		// e.setDelay(1000); // 1 frame per sec
-		// e.setDelay(100); // 10 frame per sec
-		e.setDelay(60); // 16 frame per sec
-		// e.setDelay(50); // 20 frame per sec
-
-		for (AffineTransformation at : animation.getAll()) {
-			final ImageIcon ii = new ImageIcon(getAviImage(at));
-			e.addFrame((BufferedImage) ii.getImage());
-		}
-		e.finish();
-		return createImageData(dim);
-	}
-
-	private Image getAviImage(AffineTransformation affineTransform) throws IOException {
-		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		writeImageInternal(baos, Animation.singleton(affineTransform));
-		baos.close();
-		return SImageIO.read(baos.toByteArray());
-	}
-
-	private UGraphic createUGraphic(final XDimension2D dim, Animation animationArg, double dx, double dy,
+	private UGraphic createUGraphic(final XDimension2D dim, Object animationArg, double dx, double dy,
 			double scaleFactor, Pragma pragma) {
 		final ColorMapper colorMapper = fileFormatOption.getColorMapper();
 		switch (fileFormatOption.getFileFormat()) {
@@ -408,18 +323,6 @@ public class ImageBuilder {
 		case SVG:
 			final boolean interactive = "true".equalsIgnoreCase(pragma.getValue("svginteractive"));
 			return createUGraphicSVG(scaleFactor, dim, interactive);
-		case EPS:
-			return new UGraphicEps(backcolor, colorMapper, stringBounder, EpsStrategy.getDefault2());
-		case EPS_TEXT:
-			return new UGraphicEps(backcolor, colorMapper, stringBounder, EpsStrategy.WITH_MACRO_AND_TEXT);
-		case HTML5:
-			return new UGraphicHtml5(backcolor, colorMapper, stringBounder);
-		case VDX:
-			return new UGraphicVdx(backcolor, colorMapper, stringBounder);
-		case LATEX:
-			return new UGraphicTikz(backcolor, colorMapper, stringBounder, scaleFactor, true);
-		case LATEX_NO_PREAMBLE:
-			return new UGraphicTikz(backcolor, colorMapper, stringBounder, scaleFactor, false);
 		case BRAILLE_PNG:
 			return new UGraphicBraille(backcolor, colorMapper, stringBounder);
 		case UTXT:
@@ -446,8 +349,8 @@ public class ImageBuilder {
 
 	}
 
-	private UGraphic createUGraphicPNG(double scaleFactor, final XDimension2D dim, Animation affineTransforms,
-			double dx, double dy, String watermark) {
+	private UGraphic createUGraphicPNG(double scaleFactor, final XDimension2D dim, Object affineTransforms, double dx,
+			double dy, String watermark) {
 		Color pngBackColor = new Color(0, 0, 0, 0);
 
 		if (this.backcolor instanceof HColorSimple)
@@ -462,7 +365,7 @@ public class ImageBuilder {
 		final Graphics2D graphics2D = builder.getGraphics2D();
 
 		final UGraphicG2d ug = new UGraphicG2d(backcolor, fileFormatOption.getColorMapper(), stringBounder, graphics2D,
-				scaleFactor, affineTransforms == null ? null : affineTransforms.getFirst(), dx, dy);
+				scaleFactor, affineTransforms == null ? null : null, dx, dy);
 		ug.setBufferedImage(builder.getBufferedImage());
 		final BufferedImage im = ug.getBufferedImage();
 		if (this.backcolor instanceof HColorGradient)
