@@ -18,7 +18,7 @@ public class Stdlib {
 		fullname = fullname.replace(".puml", "");
 		fullname = fullname.replace("awslib/", "awslib14/");
 
-		final String fullpath = "/app/stdlib/" + fullname + ".puml";
+		final String fullpath = "/app/plantuml-wasm/stdlib/" + fullname + ".puml";
 		System.err.println("Trying to read " + fullpath);
 		// See https://docs.leaningtech.com/cheerpj/File-System-support
 		try {
