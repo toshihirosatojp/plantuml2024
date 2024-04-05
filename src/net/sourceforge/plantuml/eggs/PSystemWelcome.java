@@ -69,8 +69,8 @@ public class PSystemWelcome extends PlainDiagram {
 		strings.add(" ");
 		strings.add("You will find more information about PlantUML syntax on <u>https://plantuml.com</u>");
 		strings.add(" ");
-		strings.add("(Details by typing \"\"license\"\" keyword)");
-		strings.add(" ");
+		//strings.add("(Details by typing \"\"license\"\" keyword)");
+		//strings.add(" ");
 		if (position == GraphicPosition.BACKGROUND_CORNER_BOTTOM_RIGHT) {
 			strings.add(" ");
 			strings.add(" ");
