@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -256,7 +256,7 @@ public abstract class PSystemError extends PlainDiagram {
 		}
 		final int min = (int) (System.currentTimeMillis() / 60000L) % 60;
 		// udrawable = addMessageAdopt(udrawable);
-		if (disableTimeBasedErrorDecorations) {
+		/*if (disableTimeBasedErrorDecorations) {
 			// do nothing
 		} else if (min == 1 || min == 8 || min == 13 || min == 55) {
 			udrawable = addMessagePatreon(udrawable);
@@ -268,7 +268,7 @@ public abstract class PSystemError extends PlainDiagram {
 		} else if (getSource().containsIgnoreCase("arecibo")) {
 			udrawable = addMessageArecibo(udrawable);
 			// ::done
-		}
+		}*/
 		return udrawable;
 	}
 
