@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@
  *
  *
  * Original Author:  Arnaud Roques
- * 
+ *
  *
  */
 package net.sourceforge.plantuml.elk;
@@ -56,13 +56,13 @@ import net.sourceforge.plantuml.core.DiagramType;
 
 /*
  * You can choose between real "org.eclipse.elk..." classes or proxied "net.sourceforge.plantuml.elk.proxy..."
- * 
+ *
  * Using proxied classes allows to compile PlantUML without having ELK available on the classpath.
  * Since GraphViz is the default layout engine up to now, we do not want to enforce the use of ELK just for compilation.
  * (for people not using maven)
- * 
+ *
  * If you are debugging, you should probably switch to "org.eclipse.elk..." classes
- * 
+ *
  */
 
 /*
@@ -125,7 +125,7 @@ import net.sourceforge.plantuml.utils.Position;
 
 /*
  * Some notes:
- * 
+ *
 https://www.eclipse.org/elk/documentation/tooldevelopers/graphdatastructure.html
 https://www.eclipse.org/elk/documentation/tooldevelopers/graphdatastructure/coordinatesystem.html
 
@@ -458,7 +458,6 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 		edges.put(link, edge);
 	}
-
 	private IEntityImage printEntityInternal(Entity ent) {
 		if (ent.isRemoved())
 			throw new IllegalStateException();

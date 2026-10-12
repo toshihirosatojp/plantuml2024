@@ -275,7 +275,7 @@ public class PSystemBuilder {
 				} catch (Throwable t) {
 					final StringLocated s = source.get(0);
 					final ErrorUml err = new ErrorUml(ErrorUmlType.EXECUTION_ERROR,
-							"Fatal crash error, you should send a mail to plantuml@gmail.com with: " + t, 0, s, null);
+							"Fatal crash error: " + t, 0, s, null);
 					errors.add(PSystemErrorUtils.buildV2(umlSource, err, Collections.<String>emptyList(), source,
 							preprocessing, t));
 				}

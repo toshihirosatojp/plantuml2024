@@ -43,8 +43,8 @@ import net.sourceforge.plantuml.cli.GlobalConfigKey;
 import net.sourceforge.plantuml.windowsdot.WindowsDotArchive;
 
 public class License {
-	
-	
+
+
 	public static void main(String[] args) {
 		List<String> lines = License.getCurrent().getTextFull();
 		for (int line = 0; line < lines.size(); line++) {
@@ -90,9 +90,9 @@ public class License {
 	public List<String> getTextFull() {
 		final List<String> text = new ArrayList<>();
 		final LicenseInfo licenseInfo = LicenseInfo.retrieveQuick();
-		header1(text, licenseInfo);
-		header2(text, licenseInfo, false);
-		end3(licenseInfo, text);
+		//header1(text, licenseInfo);
+		//header2(text, licenseInfo, false);
+		//end3(licenseInfo, text);
 		return text;
 	}
 
@@ -114,7 +114,7 @@ public class License {
 		if (licenseInfo.isNone()) {
 			text.add("+=======================================================================");
 			text.add("| ");
-			text.add("|      PlantUML : a free UML diagram generator");
+			text.add("|      PlantUML: UML diagram generator");
 			text.add("| ");
 			text.add("+=======================================================================");
 		} else {
@@ -135,20 +135,7 @@ public class License {
 		text.add("Project Info:  https://plantuml.com");
 		text.add(" ");
 
-		if (licenseInfo.isValid() == false) {
-			text.add("If you like this project or if you find it useful, you can support us at:");
-			text.add(" ");
-			text.add("https://plantuml.com/patreon (only 1$ per month!)");
-			text.add("https://plantuml.com/liberapay (only 1\u20ac per month!)");
-			text.add("https://plantuml.com/paypal");
-			if (withQrcode) {
-				text.add(
-						"\t<qrcode:https://plantuml.com/patreon>\t\t<qrcode:https://plantuml.com/lp>\t\t<qrcode:https://plantuml.com/paypal>");
-			} else {
-				text.add("");
-				text.add(" ");
-			}
-		}
+
 	}
 
 	private void end3(final LicenseInfo licenseInfo, final List<String> text) {

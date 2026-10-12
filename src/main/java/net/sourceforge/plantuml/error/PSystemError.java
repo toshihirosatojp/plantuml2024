@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -214,23 +214,7 @@ public abstract class PSystemError extends UgDiagram {
 	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) throws IOException {
 		TextBlock result = getGraphicalFormatted();
 
-		if (!TeaVM.isTeaVM() && !Logme.MODE_VEGA) {
-			if (getSource().getTotalLineCountLessThan5())
-				result = addWelcome(result);
 
-			final int min = (int) (System.currentTimeMillis() / 60000L) % 60;
-			if (disableTimeBasedErrorDecorations) {
-				// do nothing
-			} else if (min == 1 || min == 8 || min == 13 || min == 55)
-				result = addMessagePatreon(result);
-			else if (min == 15)
-				result = addMessageLiberapay(result);
-			else if (min == 30 || min == 39 || min == 48)
-				result = addMessageDedication(result);
-			else if (getSource().containsIgnoreCase("arecibo"))
-				result = addMessageArecibo(result);
-
-		}
 		return result;
 	}
 
