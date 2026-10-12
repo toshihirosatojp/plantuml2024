@@ -34,3 +34,10 @@ build/
 
 *.patch
 **/*.class
+
+# macos
+.DS_Store
+
+# other
+tmp
+node_modules/

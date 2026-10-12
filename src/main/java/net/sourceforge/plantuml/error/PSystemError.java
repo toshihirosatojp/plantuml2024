@@ -1,0 +1,371 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ *
+ * If you like this project or if you find it useful, you can support us at:
+ *
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ *
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ *
+ */
+package net.sourceforge.plantuml.error;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import net.atmp.PixelImage;
+import net.sourceforge.plantuml.ErrorUml;
+import net.sourceforge.plantuml.FileFormatOption;
+import net.sourceforge.plantuml.UgDiagram;
+import net.sourceforge.plantuml.core.DiagramDescription;
+import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.crash.ReportLog;
+import net.sourceforge.plantuml.eggs.PSystemWelcome;
+import net.sourceforge.plantuml.flashcode.FlashCodeFactory;
+import net.sourceforge.plantuml.klimt.AffineTransformType;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.klimt.color.HColorSimple;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
+import net.sourceforge.plantuml.klimt.geom.GraphicPosition;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
+import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockRaw;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.UImage;
+import net.sourceforge.plantuml.klimt.sprite.SpriteContainerEmpty;
+import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.text.BackSlash;
+import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.version.LicenseInfo;
+import net.sourceforge.plantuml.version.PSystemVersion;
+import net.sourceforge.plantuml.version.Version;
+
+public abstract class PSystemError extends UgDiagram {
+
+	private static boolean disableTimeBasedErrorDecorations = false;
+
+	public static void disableTimeBasedErrorDecorations() {
+		PSystemError.disableTimeBasedErrorDecorations = true;
+	}
+
+	protected List<StringLocated> trace;
+	protected ErrorUml singleError;
+
+	public PSystemError(UmlSource source, PreprocessingArtifact preprocessing) {
+		super(source, preprocessing);
+	}
+
+	final protected StringLocated getLastLine() {
+		return trace.get(trace.size() - 1);
+	}
+
+	final public LineLocation getLineLocation() {
+		return getLastLine().getLocation();
+	}
+
+	final public Collection<ErrorUml> getErrorsUml() {
+		return Collections.singleton(singleError);
+	}
+
+	final public ErrorUml getFirstError() {
+		return singleError;
+	}
+
+	final public String getWarningOrError() {
+		final StringBuilder sb = new StringBuilder();
+		sb.append(getDescription());
+		sb.append(BackSlash.CHAR_NEWLINE);
+		for (CharSequence t : getTitle().getDisplay()) {
+			sb.append(t);
+			sb.append(BackSlash.CHAR_NEWLINE);
+		}
+		sb.append(BackSlash.CHAR_NEWLINE);
+		return sb.toString();
+	}
+
+	private TextBlock getGraphicalFormatted() {
+		final FontConfiguration fc0 = GraphicStrings.sansSerif14(HColors.BLACK).bold();
+		final FontConfiguration fc1 = GraphicStrings.sansSerif14(HColors.MY_GREEN).bold();
+		final FontConfiguration fc2 = GraphicStrings.sansSerif14(HColors.RED).bold();
+		final FontConfiguration fc4 = GraphicStrings.sansSerif12(HColors.MY_GREEN).bold().italic();
+
+		final List<String> fullBody = getTextFullBody();
+		final TextBlock result0 = TextBlockUtils.addBackcolor(
+				TextBlockUtils.withMargin(new TextBlockRaw(getTextFromStack(), fc0), 1, 1, 1, 4), HColors.MY_GREEN);
+		final TextBlock result1 = new TextBlockRaw(allButLast(fullBody), fc1);
+		final TextBlock result2 = new TextBlockRaw(onlyLast(fullBody), fc1.wave(HColors.RED));
+		final TextBlock result3 = new TextBlockRaw(getTextError(), fc2);
+		final TextBlock result4 = TextBlockUtils.withMargin(new TextBlockRaw(header(), fc4), 0, 2, 0, 8);
+		TextBlock result = result0;
+		result = TextBlockUtils.mergeTB(result, result1, HorizontalAlignment.LEFT);
+		result = TextBlockUtils.mergeTB(result, result2, HorizontalAlignment.LEFT);
+		result = TextBlockUtils.mergeTB(result, result3, HorizontalAlignment.LEFT);
+		result = TextBlockUtils.mergeTB(result4, result, HorizontalAlignment.LEFT);
+		result = TextBlockUtils.withMargin(result, 5, 5);
+		return TextBlockUtils.addBackcolor(result, HColors.BLACK);
+	}
+
+	private List<String> header() {
+		final ReportLog result = new ReportLog();
+		if (!Logme.MODE_VEGA) {
+			result.add(Version.fullDescription());
+			result.checkOldVersionWarningRaw();
+		}
+		return result.asList();
+	}
+
+	public List<String> getPureAsciiFormatted() {
+		final List<String> result = getTextFromStack();
+		result.addAll(getTextFullBody());
+		result.add("^^^^^");
+		result.addAll(getTextError());
+		return result;
+	}
+
+	private List<String> getTextFromStack() {
+		LineLocation lineLocation = getLineLocation();
+		final List<String> result = new ArrayList<>();
+		if (lineLocation != null) {
+			append(result, lineLocation);
+			while (lineLocation.getParent() != null) {
+				lineLocation = lineLocation.getParent();
+				append(result, lineLocation);
+			}
+		}
+		return result;
+	}
+
+	protected List<String> getTextFullBody() {
+		final List<String> result = new ArrayList<>();
+		result.add(" ");
+		final int traceSize = trace.size();
+		if (traceSize > 40) {
+			for (StringLocated s : trace.subList(0, 5))
+				addToResult(result, s);
+
+			result.add("...");
+			final int skipped = traceSize - 5 - 20;
+			result.add("... ( skipping " + skipped + " lines )");
+			result.add("...");
+			for (StringLocated s : trace.subList(traceSize - 20, traceSize))
+				addToResult(result, s);
+
+		} else {
+			for (StringLocated s : trace)
+				addToResult(result, s);
+
+		}
+		return result;
+	}
+
+	private void addToResult(final List<String> result, StringLocated s) {
+		String tmp = s.getString();
+		if (tmp.length() > 120)
+			tmp = tmp.substring(0, 120) + " ...";
+
+		result.add(tmp);
+	}
+
+	private List<String> getTextError() {
+		return Arrays.asList(" " + singleError.getError());
+	}
+
+	@Override
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) throws IOException {
+		TextBlock result = getGraphicalFormatted();
+
+
+		return result;
+	}
+
+	private void append(List<String> result, LineLocation lineLocation) {
+		if (lineLocation.getDescription() != null)
+			result.add("[From " + lineLocation.getDescription() + " (line " + (lineLocation.getPosition() + 1) + ") ]");
+
+	}
+
+	final public DiagramDescription getDescription() {
+		return new DiagramDescription("(Error)");
+	}
+
+	private List<String> allButLast(List<String> full) {
+		return full.subList(0, full.size() - 1);
+	}
+
+	private List<String> onlyLast(List<String> full) {
+		return full.subList(full.size() - 1, full.size());
+	}
+
+	private TextBlock getWelcome() {
+		return new PSystemWelcome(getSource(), GraphicPosition.BACKGROUND_CORNER_TOP_RIGHT, getPreprocessingArtifact())
+				.getTextBlock(0, null);
+	}
+
+	private TextBlock addWelcome(final TextBlock result) {
+		final TextBlock welcome = getWelcome();
+		return TextBlockUtils.mergeTB(welcome, result, HorizontalAlignment.LEFT);
+	}
+
+	private TextBlock addMessageLiberapay(final TextBlock source) throws IOException {
+		if (LicenseInfo.retrieveNamedOrDistributorQuickIsValid())
+			return source;
+
+		final TextBlock message = getMessageLiberapay();
+		TextBlock result = TextBlockUtils.mergeTB(message, source, HorizontalAlignment.LEFT);
+		result = TextBlockUtils.mergeTB(result, message, HorizontalAlignment.LEFT);
+		return result;
+	}
+
+	private TextBlock addMessagePatreon(final TextBlock source) throws IOException {
+		if (LicenseInfo.retrieveNamedOrDistributorQuickIsValid())
+			return source;
+
+		final TextBlock message = getMessagePatreon();
+		TextBlock result = TextBlockUtils.mergeTB(message, source, HorizontalAlignment.LEFT);
+		result = TextBlockUtils.mergeTB(result, message, HorizontalAlignment.LEFT);
+		return result;
+	}
+
+	private TextBlock addMessageDedication(final TextBlock source) throws IOException {
+		if (LicenseInfo.retrieveNamedOrDistributorQuickIsValid())
+			return source;
+
+		final TextBlock message = getMessageDedication();
+		TextBlock result = TextBlockUtils.mergeTB(message, source, HorizontalAlignment.LEFT);
+		return result;
+	}
+
+	private TextBlock addMessageAdopt(final TextBlock source) throws IOException {
+		if (LicenseInfo.retrieveNamedOrDistributorQuickIsValid())
+			return source;
+
+		final TextBlock message = getMessageAdopt();
+		TextBlock result = TextBlockUtils.mergeTB(message, source, HorizontalAlignment.LEFT);
+		return result;
+	}
+
+	private TextBlock addMessageArecibo(final TextBlock source) throws IOException {
+		final UImage message = new UImage(
+				new PixelImage(PSystemVersion.getArecibo(), AffineTransformType.TYPE_BILINEAR));
+		return TextBlockUtils.mergeLR(source, message, VerticalAlignment.TOP);
+	}
+
+	private TextBlock getMessageDedication() {
+		final HColorSimple backColor = (HColorSimple) HColorSet.instance().getColorOrWhite("#eae2c9");
+
+		final PortableImage qrcode = smaller(FlashCodeFactory.getFlashCodeUtils()
+				.exportFlashcode("https://plantuml.com/dedication", XColor.BLACK, backColor.getAwtColor()));
+		final Display disp = Display.create("<b>Add your own dedication into PlantUML", " ", "For just $5 per month!",
+				"Details on <i>[[https://plantuml.com/dedication]]");
+
+		final UFont font = UFontFactory.sansSerif(14);
+		final FontConfiguration fc = FontConfiguration.create(font, HColors.BLACK, HColors.BLACK, null);
+		final TextBlock text = TextBlockUtils
+				.withMargin(disp.create(fc, HorizontalAlignment.LEFT, new SpriteContainerEmpty()), 10, 0);
+		final TextBlock result;
+		if (qrcode == null) {
+			result = text;
+		} else {
+			final UImage qr = new UImage(new PixelImage(qrcode, AffineTransformType.TYPE_NEAREST_NEIGHBOR)).scale(3);
+			result = TextBlockUtils.mergeLR(text, qr, VerticalAlignment.CENTER);
+		}
+		return TextBlockUtils.addBackcolor(result, backColor);
+
+	}
+
+	private TextBlock getMessageAdopt() {
+		final HColor backColor = HColorSet.instance().getColorOrWhite("#eff4d2");
+
+		final Display disp = Display.create("<b>Adopt-a-Word and put your message here!", " ",
+				"Details on <i>[[https://plantuml.com/adopt]]", " ");
+
+		final UFont font = UFontFactory.sansSerif(14);
+		final FontConfiguration fc = FontConfiguration.create(font, HColors.BLACK, HColors.BLACK, null);
+		final TextBlock text = TextBlockUtils
+				.withMargin(disp.create(fc, HorizontalAlignment.LEFT, new SpriteContainerEmpty()), 10, 0);
+		final TextBlock result;
+		result = text;
+		return TextBlockUtils.addBackcolor(result, backColor);
+
+	}
+
+	private TextBlock getMessagePatreon() {
+		return buildMessageWithQrcode(PSystemVersion.getTime01(), "https://plantuml.com/patreon");
+	}
+
+	private TextBlock getMessageLiberapay() {
+		return buildMessageWithQrcode(PSystemVersion.getTime15(), "https://plantuml.com/lp");
+	}
+
+	private TextBlock buildMessageWithQrcode(PortableImage banner, String url) {
+		final UImage message = new UImage(new PixelImage(banner, AffineTransformType.TYPE_BILINEAR));
+		final XColor back = XColor.from(message.getImage(1).getRGB(0, 0));
+		final HColor backColor = HColors.simple(back);
+
+		final PortableImage qrcode = smaller(
+				FlashCodeFactory.getFlashCodeUtils().exportFlashcode(url, XColor.BLACK, XColor.WHITE));
+
+		TextBlock result;
+		if (qrcode == null) {
+			result = message;
+		} else {
+			final UImage qr = new UImage(new PixelImage(qrcode, AffineTransformType.TYPE_NEAREST_NEIGHBOR)).scale(2);
+			result = TextBlockUtils.mergeLR(message, qr, VerticalAlignment.CENTER);
+		}
+		return TextBlockUtils.addBackcolor(TextBlockUtils.withMargin(result, 1, 1), backColor);
+	}
+
+	private PortableImage smaller(PortableImage im) {
+		if (im == null)
+			return null;
+
+		final int nb = 1;
+		return im.getSubimage(nb, nb, im.getWidth() - 2 * nb, im.getHeight() - 2 * nb);
+	}
+
+	public int score() {
+		final int result = trace.size() * 10 + singleError.score();
+		return result;
+	}
+
+}

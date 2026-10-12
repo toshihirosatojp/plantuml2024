@@ -1,0 +1,1285 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.sequencediagram.teoz;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import net.sourceforge.plantuml.asciiverse.ADimension2D;
+import net.sourceforge.plantuml.asciiverse.AElseSeparator;
+import net.sourceforge.plantuml.asciiverse.AGroupFrame;
+import net.sourceforge.plantuml.asciiverse.InfinitePlan;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.real.Real;
+import net.sourceforge.plantuml.real.RealUtils;
+import net.sourceforge.plantuml.sequencediagram.Event;
+import net.sourceforge.plantuml.sequencediagram.Grouping;
+import net.sourceforge.plantuml.sequencediagram.GroupingLeaf;
+import net.sourceforge.plantuml.sequencediagram.GroupingStart;
+import net.sourceforge.plantuml.sequencediagram.GroupingType;
+import net.sourceforge.plantuml.sequencediagram.HSpace;
+import net.sourceforge.plantuml.sequencediagram.LifeEvent;
+import net.sourceforge.plantuml.sequencediagram.Message;
+import net.sourceforge.plantuml.sequencediagram.MessageExo;
+import net.sourceforge.plantuml.sequencediagram.Note;
+import net.sourceforge.plantuml.sequencediagram.NotePosition;
+import net.sourceforge.plantuml.sequencediagram.Notes;
+import net.sourceforge.plantuml.sequencediagram.Participant;
+import net.sourceforge.plantuml.sequencediagram.Reference;
+import net.sourceforge.plantuml.skin.Area;
+import net.sourceforge.plantuml.skin.Component;
+import net.sourceforge.plantuml.skin.ComponentType;
+import net.sourceforge.plantuml.skin.Context2D;
+import net.sourceforge.plantuml.skin.rose.Rose;
+import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.PName;
+import net.sourceforge.plantuml.style.Style;
+
+public class GroupingTile extends AbstractTile {
+
+	public static final int EXTERNAL_MARGINX1 = 3;
+	public static final int EXTERNAL_MARGINX2 = 9;
+	// Vertical breathing room around a group frame, on each side. It is reserved
+	// in getPreferredHeight() (both sides) and the TOP one is applied at draw time
+	// via getFrameY() -- deliberately NOT by offsetting the gauge min, which must
+	// stay a clean chaining point for parallel (&) siblings.
+	public static final int EXTERNAL_MARGINY = 4;
+	private static final int MARGINX = 16;
+	// private static final int MARGINY = 10;
+	private static final int MARGINY_MAGIC = 20;
+	private final List<Tile> tiles = new ArrayList<>();
+	private final Real min;
+	private final Real max;
+	private final GroupingStart start;
+	private GroupingLeaf end;
+	private final YGauge yGauge;
+
+	private final Rose skin;
+	private final ISkinParam skinParam;
+	private final Display display;
+
+	private double bodyHeight;
+	private final TileArguments tileArguments;
+
+	public Event getEvent() {
+		return start;
+	}
+
+	@Override
+	public double getContactPointRelative() {
+		return 0;
+	}
+
+	@Override
+	public YGauge getYGauge() {
+		return yGauge;
+	}
+
+	public GroupingTile(Iterator<Event> it, GroupingStart start, TileArguments tileArgumentsBackColorChanged,
+			TileArguments tileArgumentsOriginal, YGauge currentY) {
+		super(tileArgumentsBackColorChanged.getStringBounder(), currentY);
+		this.tileArguments = tileArgumentsOriginal;
+		final StringBounder stringBounder = tileArgumentsOriginal.getStringBounder();
+		this.start = start;
+		this.display = start.getTitle().equals("group") ? Display.create(start.getComment())
+				: Display.create(start.getTitle(), start.getComment());
+		this.skin = tileArgumentsOriginal.getSkin();
+		// this.skinParam = tileArgumentsOriginal.getSkinParam();
+		this.skinParam = tileArgumentsBackColorChanged.getSkinParam();
+
+		final List<Real> min2 = new ArrayList<>();
+		final List<Real> max2 = new ArrayList<>();
+
+		final List<Tile> allElses = new ArrayList<>();
+		final XDimension2D dim1 = getPreferredDimensionIfEmpty(stringBounder);
+
+		// Chain anchoring for a whole & -parallel group (see the CHAIN
+		// ANCHORING note on YGauge): a group following "& opt"/"& alt" must start at
+		// the PREVIOUS tile's min (top-aligned, like CommunicationTile does
+		// for a plain parallel message), not its max (which would stack it
+		// below, sequentially). previousMax is kept aside so the outer chain's
+		// max can still be pushed past whichever of the two members is taller.
+		final Real previousMax = currentY.getMax();
+		final boolean parallel = start.isParallel();
+		// INVARIANT: the gauge's min is the CHAINING POINT, never the drawn
+		// frame's top. Those two differ by EXTERNAL_MARGINY for a group, and
+		// conflating them broke `&` groups: a parallel sibling chains on the
+		// previous group's min, so if that min were already margin-offset the
+		// sibling would inherit the offset AND add its own -- drifting 4px lower
+		// per pair. The margin is applied at DRAW time instead (see getFrameY() /
+		// drawU), so the min stays a clean chaining point siblings can align on.
+		final Real firstY = parallel ? currentY.getMin() : previousMax;
+
+		// The body starts below the frame's top margin AND the header
+		final double h = dim1.getHeight() + MARGINY_MAGIC / 2 + EXTERNAL_MARGINY;
+		currentY = YGauge.create(firstY.addAtLeast(h), 0);
+
+		while (it.hasNext()) {
+			final Event ev = it.next();
+			if (ev instanceof GroupingLeaf && ((Grouping) ev).getType() == GroupingType.END) {
+				this.end = (GroupingLeaf) ev;
+				break;
+			}
+
+			for (Tile tile : TileBuilder.buildOne(it, tileArgumentsOriginal, ev, this, currentY)) {
+				tiles.add(tile);
+				currentY = tile.getYGauge();
+			}
+
+		}
+
+		// bodyHeight drives both the frame's own drawn height (getTotalHeight)
+		// and the space this GroupingTile reserves in the OUTER Y chain
+		// (getPreferredHeight() -> this.yGauge below): it must count each
+		// parallel (&) cluster ONCE (tallest-before-contact + tallest-after-
+		// contact), not sum every member's own height, or the group ends up
+		// taller than needed whenever it contains a & message.
+		//
+		// Y POSITIONING itself no longer goes through this clustering (the gauge
+		// chain does it, at construction time), so `tiles` stays FLAT for drawing;
+		// this is a throwaway, height-only pass over the same list.
+		bodyHeight = computeBodyHeight(tiles);
+
+		// `tiles` is FLAT (the & clustering is height-only, see bodyHeight above),
+		// so every else tile is reached directly here
+		for (Tile tile : tiles) {
+			final Event ev = tile.getEvent();
+			if (ev instanceof GroupingLeaf && ((Grouping) ev).getType() == GroupingType.ELSE) {
+				allElses.add(tile);
+				continue;
+			}
+
+			// A `|||` (HSpace) is a pure vertical spacer with no horizontal position of
+			// its own: HSpaceTile.getMinX()/getMaxX() just return the diagram's global
+			// X origin (TileArguments.getXOrigin()), unrelated to the participants used
+			// inside this group. Folding that value into min2/max2 dragged the group's
+			// frame all the way to the left edge of the diagram whenever a `|||`
+			// appeared inside a group (issue #2789), so exclude it from the bounding
+			// box computation, exactly like an else section is excluded above.
+			if (ev instanceof HSpace)
+				continue;
+
+			// getDrawnMinX()/getDrawnMaxX() default to getMinX()/getMaxX() for every
+			// tile except a self-message loop (and its two note-wrapping siblings),
+			// where they report the loop's actual drawn extent instead of the wider
+			// layout reservation getMinX()/getMaxX() keep (see Tile.getDrawnMinX()) --
+			// the frame has no reason to inherit blank, never-painted-into space as
+			// part of its own size (issue #2788, "too much space of the group").
+			min2.add(tile.getDrawnMinX().addFixed(-MARGINX));
+			final Real m = tile.getDrawnMaxX();
+			// max2.add(m == tileArgumentsOriginal.getOmega() ? m : m.addFixed(MARGINX));
+			max2.add(m.addFixed(MARGINX));
+		}
+		final double width = dim1.getWidth();
+		if (min2.size() == 0)
+			min2.add(tileArgumentsOriginal.getXOrigin());
+
+		this.min = RealUtils.min(min2);
+		for (Tile anElse : allElses)
+			max2.add(anElse.getMaxX());
+
+		max2.add(this.min.addFixed(width + 16));
+		this.max = RealUtils.max(max2);
+		// min == chaining point (NOT the frame top -- see firstY above).
+		// getPreferredHeight() covers the frame plus BOTH margins, so the max is
+		// simply min + getPreferredHeight().
+		if (parallel) {
+			// Like YGauge.createParallel: the group's own max must still
+			// dominate the PREVIOUS sibling's max, so that whichever of the
+			// two parallel groups is taller correctly pushes the next
+			// sequential tile below the whole pair, not just below this one.
+			final Real parallelMax = firstY.addAtLeast(getPreferredHeight());
+			parallelMax.ensureBiggerThan(previousMax);
+			this.yGauge = new YGauge(firstY, parallelMax);
+		} else {
+			this.yGauge = new YGauge(firstY, firstY.addAtLeast(getPreferredHeight()));
+		}
+
+	}
+
+	// Absolute Y of the DRAWN frame's top edge: the gauge min (the chaining
+	// point) plus the top margin. Everything that draws the frame or positions
+	// something relative to it must go through this, never through the raw
+	// gauge min.
+	private double getFrameY() {
+		return getYGauge().getMin().getCurrentValue() + EXTERNAL_MARGINY;
+	}
+
+	protected Component getComponent(StringBounder stringBounder) {
+		final Component comp = skin.createComponent(start.getUsedStyles(), ComponentType.GROUPING_HEADER_TEOZ, null,
+				skinParam, display);
+		return comp;
+	}
+
+	private XDimension2D getPreferredDimensionIfEmpty(StringBounder stringBounder) {
+		return getComponent(stringBounder).getPreferredDimension(stringBounder);
+	}
+
+	@Override
+	public void drawU(UGraphic ug) {
+		final StringBounder stringBounder = ug.getStringBounder();
+
+		final Area area = getArea(stringBounder);
+
+		final Component comp = getComponent(stringBounder);
+
+		if (((Context2D) ug).isBackground())
+			drawBackground(ug, area);
+
+		// The frame is drawn EXTERNAL_MARGINY below the gauge min (which is the
+		// chaining point, not the frame top -- see getFrameY)
+		comp.drawU(ug.apply(new UTranslate(minCurrentValueForDrawing(), getFrameY())), area, (Context2D) ug);
+		drawNotes(ug.apply(UTranslate.dy(getFrameY())));
+
+		// Children draw themselves in ABSOLUTE coordinates (each applies its own
+		// gauge min as a self-translate prologue), so no running dy() is accumulated
+		// here. The else dividers are drawn by the ElseTiles themselves, likewise.
+		for (Tile tile : tiles)
+			((UDrawable) tile).drawU(ug);
+	}
+
+	protected Area getArea(final StringBounder stringBounder) {
+		final Area area = Area.create(max.getCurrentValue() - min.getCurrentValue(), getTotalHeight(stringBounder));
+		return area;
+	}
+
+	protected double minCurrentValueForDrawing() {
+		return min.getCurrentValue();
+	}
+
+	// Frame extents (the group's own border), as opposed to getMinX()/getMaxX()
+	// which additionally reserve EXTERNAL_MARGINX1/2 and the width of notes
+	// attached to the group's "end" ("note left"/"note right" after `end`) --
+	// that reservation is for the PARENT's layout only. Children that draw
+	// something spanning the frame itself (the else divider line, the
+	// background Blotter) must use these, not getMinX()/getMaxX(), or they
+	// draw wider than the visible frame whenever a group-end note is present.
+	final Real getFrameMinX() {
+		return min;
+	}
+
+	final Real getFrameMaxX() {
+		return max;
+	}
+
+	private void drawBackground(UGraphic ug, Area area) {
+		final Style style = start.getUsedStyles()[0];
+		final HColor back = style.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
+		final double round = style.value(PName.RoundCorner).asDouble();
+		// `ug` arrives UNTRANSLATED: every tile self-translates via its own absolute
+		// gauge. So the Blotter -- which draws its bands from a LOCAL y=0 -- must be
+		// fed a `ug` explicitly translated to the frame top, not just an x offset.
+		drawCompBackground(ug.apply(UTranslate.dy(getFrameY())), area, back, round);
+	}
+
+	protected void drawCompBackground(UGraphic ug, Area area, final HColor back, final double round) {
+		final XDimension2D dimensionToUse = area.getDimensionToUse();
+		final Blotter blotter = new Blotter(dimensionToUse, back, round);
+
+		for (Tile tile : tiles)
+			if (tile instanceof ElseTile) {
+				final ElseTile elseTile = (ElseTile) tile;
+				// The color boundary must land EXACTLY where ElseTile.drawU() draws
+				// its dashed divider, i.e. at the else's gauge min with NO extra
+				// offset. (The pre-YGauge code carried a `+ MARGINY_MAGIC / 2` here,
+				// but that was only harmless because the divider line was drawn by
+				// the same method using the identical "+10", so the two cancelled out.
+				// Now the divider is drawn independently by the ElseTile itself, so
+				// carrying that term over would sit the band 10px off.)
+				final double ypos = elseTile.getYGauge().getMin().getCurrentValue() - getFrameY();
+				HColor backElse = elseTile.getBackColorGeneral();
+				// An else section without its own color inherits the group
+				// background: it may come from the style, not only from the
+				// inline #color of the command, so getBackColorGeneral() alone
+				// is not enough
+				if (backElse == null)
+					backElse = back;
+				blotter.addChange(ypos + 1, backElse);
+			}
+
+		blotter.closeChanges();
+		// `ug` was already translated to the frame top by the caller (see
+		// drawBackground above), so only the X offset is needed here.
+		blotter.drawU(ug.apply(UTranslate.dx(min.getCurrentValue())));
+	}
+
+	final protected double getTotalHeight(StringBounder stringBounder) {
+		final XDimension2D dimIfEmpty = getPreferredDimensionIfEmpty(stringBounder);
+		return bodyHeight + dimIfEmpty.getHeight() + MARGINY_MAGIC / 2;
+	}
+
+	@Override
+	public double getPreferredHeight() {
+		final XDimension2D dim1 = getPreferredDimensionIfEmpty(getStringBounder());
+		// Both vertical margins are RESERVED here, so the gauge spans the frame plus
+		// its two margins and the next tile chains clear of it. The TOP margin is
+		// additionally materialized at draw time (the frame is drawn at getFrameY()
+		// == gauge min + EXTERNAL_MARGINY), which is what actually moves the border
+		// down. Reserving without drawing the offset leaves the frame flush against
+		// the previous tile -- and, right after a `newpage`, flush against the page
+		// clip boundary, so the top border bleeds into the previous page.
+		return dim1.getHeight() + bodyHeight + MARGINY_MAGIC + 2 * EXTERNAL_MARGINY;
+	}
+
+	public void addConstraints() {
+		for (Tile tile : tiles)
+			tile.addConstraints();
+
+		ensureFollowingParticipantClearsFrame();
+		ensurePrecedingParticipantClearsFrame();
+	}
+
+	// A child tile only reserves room for ITS OWN footprint against its
+	// immediate neighbour (e.g. CommunicationTileSelf.addConstraints() pushes
+	// the participant declared right after it just past its own self-message
+	// loop). None of them know that this GroupingTile's frame extends a
+	// further MARGINX + EXTERNAL_MARGINX2 beyond whatever their own footprint
+	// is (see the min/max computation in the constructor above) -- so a
+	// participant declared right after the group, but never itself used
+	// inside it, can end up placed UNDER the group's frame whenever no child
+	// constraint happened to reserve enough room on its own (typically: the
+	// group's last-touched participant ends on a self-message, whose own
+	// loop is narrower than "loop width + group frame margin") (issue #2788).
+	// Explicitly push the very next participant (in declaration order) past
+	// this group's own resolved right edge; the existing sequential
+	// LivingSpaces.addConstraints() 10px-gap chain takes care of every
+	// participant further right, once this first one is clear.
+	//
+	// CRITICAL, same trap as PlayingSpace.ensureDisjoint() (see its own comment):
+	// this must NEVER feed `this.max` -- or any other RealUtils.max()/min()
+	// composed Real, e.g. a plain CommunicationTile.getMaxX() -- into an
+	// ensureBiggerThan() call. RealMax/RealMin cache their resolved value the
+	// FIRST time getCurrentValue() is read, permanently, with no invalidation.
+	// A force's apply() reads both its endpoints on EVERY compile() pass, so a
+	// RealMax handed to ensureBiggerThan() gets read (and frozen) on pass one --
+	// typically before the dependents it aggregates (e.g. a message's target
+	// participant, still being pushed rightward by that message's OWN,
+	// separately-registered force) have converged. The frame then draws at the
+	// stale, too-small frozen width while the participant it was supposed to
+	// include keeps moving right on later passes, right out of the frame (this
+	// exact bug, shipped once already: an `alt`/`else` branch using a plain,
+	// non-self message to a participant not touched by the `if` branch
+	// rendered outside the frame because this method used to pass `max`
+	// directly). The fix below only ever reads plain LivingSpace positions
+	// (posC, a chained RealDelta over posB, never cached) and, for a
+	// self-message, CommunicationTileSelf.getMaxX() (also a plain delta chain,
+	// confirmed by inspection to never construct a RealUtils.max()) -- both
+	// safe to re-read on every compile() pass.
+	private void ensureFollowingParticipantClearsFrame() {
+		final LivingSpaces livingSpaces = tileArguments.getLivingSpaces();
+		final Set<LivingSpace> touched = new HashSet<>();
+		collectTouchedLivingSpaces(tiles, livingSpaces, touched);
+
+		final LivingSpace rightmost = rightmostOf(livingSpaces, touched);
+		if (rightmost == null)
+			return;
+
+		final LivingSpace next = livingSpaces.next(rightmost);
+		if (next == null)
+			return;
+
+		final Real nextPosA = next.getPosA(getStringBounder());
+		final double frameMargin = MARGINX + EXTERNAL_MARGINX2;
+
+		// Baseline: the rightmost touched participant's own lifeline, plus the
+		// frame's margin. For a normal (non-self) message this already matches
+		// the frame's true edge once the graph stabilizes: the message's own
+		// addConstraints() guarantees its target's posC clears the arrow+label,
+		// so the target's posC alone dominates the same RealUtils.max() the
+		// constructor would otherwise have computed.
+		nextPosA.ensureBiggerThan(rightmost.getPosC(getStringBounder()).addFixed(frameMargin));
+
+		// Everything else that can widen the frame beyond that baseline: a
+		// self-message loop, a right-hand note, a note over a participant, the
+		// group's own title, and the same list again for every nested group
+		// (whose frame carries its own margins on top of ours).
+		ensureClearsFrameOf(this, nextPosA, frameMargin, livingSpaces);
+	}
+
+	// Mirror of ensureFollowingParticipantClearsFrame(), for the LEFT edge: a
+	// participant declared right BEFORE the group, but never itself used inside
+	// it, can end up placed UNDER the group's frame the same way -- typically
+	// the group's first-touched participant opens on a reverse self-message
+	// (`a<-a`) or carries a `note left`, either of which reaches further left
+	// than its own lifeline (issue #2788, "participant x should be outside the
+	// group").
+	//
+	// Unlike the follow-frame side, the participant that needs to MOVE here is
+	// `leftmost` itself (the group's own edge, not something outside it) -- so
+	// this pushes each contributing tile's own getMinX() directly, rather than
+	// leftmost's posC: leftmost.getPosC() is exactly what a self-message/note
+	// anchored on `leftmost` measures its own reach FROM, so constraining
+	// leftmost.getPosC() against a bound built from that same tile would
+	// constrain it against a Real derived from itself -- a vacuous force, not a
+	// real constraint (posC cancels out of both sides, leaving nothing for the
+	// solver to actually adjust). A tile's own getMinX(), by contrast, is safe
+	// to push directly: it depends on ITS OWN anchor LivingSpace (`leftmost`
+	// when the tile is a self-message or an unanchored note, but not
+	// necessarily -- a `note left of b` inside the group is anchored on `b`,
+	// not `leftmost`, and still needs the same clearance from `previous`), and
+	// `previous`'s own posC is a completely independent Real, so there is
+	// nothing circular about constraining one against the other.
+	private void ensurePrecedingParticipantClearsFrame() {
+		final LivingSpaces livingSpaces = tileArguments.getLivingSpaces();
+		final Set<LivingSpace> touched = new HashSet<>();
+		collectTouchedLivingSpaces(tiles, livingSpaces, touched);
+
+		final LivingSpace leftmost = leftmostOf(livingSpaces, touched);
+		if (leftmost == null)
+			return;
+
+		final LivingSpace previous = livingSpaces.previous(leftmost);
+		if (previous == null)
+			return;
+
+		final Real previousPosC = previous.getPosC(getStringBounder());
+		final double frameMargin = MARGINX + EXTERNAL_MARGINX2;
+
+		// Baseline: leftmost's own lifeline, plus the frame's margin -- the
+		// mirror of ensureFollowingParticipantClearsFrame()'s own baseline.
+		leftmost.getPosC(getStringBounder()).ensureBiggerThan(previousPosC.addFixed(frameMargin));
+
+		// Everything else that can widen the frame past that baseline: a
+		// reverse self-message loop, a left-hand note (wherever in the group
+		// it is anchored), and the same list again for every nested group
+		// (issue #2788, `group` inside `group`).
+		ensureClearsFrameOfLeft(this, previousPosC, frameMargin);
+	}
+
+	// Pushes `previousPosC.addFixed(margin)` as a lower bound onto every left
+	// edge `group`'s own frame is built on -- the left-side mirror of
+	// ensureClearsFrameOf(), with the same per-level margin growth for nested
+	// groups (each inner frame sits MARGINX + EXTERNAL_MARGINX2 further out
+	// than whatever it wraps, and that stacks once per nesting level).
+	//
+	// Pushes each tile's own stableMinX() directly rather than routing through
+	// leftmost's posC (see ensurePrecedingParticipantClearsFrame()'s own
+	// comment on why that would be circular) -- which also makes this simpler
+	// than the follow-frame side: no separate title-clearing pass is needed
+	// (a group's title only ever stretches max2, never min2 -- see the
+	// constructor -- so it cannot push the LEFT edge), and no LivingSpace
+	// identity check is needed either (a contributor anchored on any
+	// participant, not just `leftmost`, is pushed against `previous` the same
+	// way, correctly covering e.g. a `note left of b` inside the group).
+	private void ensureClearsFrameOfLeft(GroupingTile group, Real previousPosC, double margin) {
+		for (Tile tile : group.tiles) {
+			if (tile instanceof GroupingTile) {
+				final GroupingTile nested = (GroupingTile) tile;
+				final double notes = nested.getNotesWidth(getStringBounder(), NotePosition.LEFT);
+				ensureClearsFrameOfLeft(nested, previousPosC, margin + MARGINX + EXTERNAL_MARGINX2 + notes);
+				continue;
+			}
+			for (Real minX : stableMinX(tile))
+				minX.ensureBiggerThan(previousPosC.addFixed(margin));
+		}
+	}
+
+	// The contributors to `max2`/`min2` (see the constructor) that this method is
+	// allowed to replay, and the ONE reason the list is a whitelist rather than a
+	// plain `tile.getMaxX()` on everything: see the RealMax caching trap described
+	// above. A tile is listed here only once its getMaxX() has been read and
+	// confirmed to be a plain delta chain over LivingSpace positions --
+	// CommunicationTile, NotesTile, ElseTile and GroupingTile itself all compose a
+	// RealUtils.max()/min() and are deliberately absent (the first is covered by
+	// the posC baseline, the last by the recursion below). NoteTile answers with a
+	// list rather than one Real: under OVER_SEVERAL its own getMaxX() composes a
+	// RealUtils.max() that has to be split back into its two safe halves.
+	//
+	// DelayTile is absent for a different, unfixable reason: its getMaxX() is built
+	// on RealUtils.middle(FIRST living space, LAST living space) -- the whole
+	// diagram's width, the participant being pushed included. Constraining that
+	// participant from it would feed itself. A `...` inside a group therefore still
+	// stretches the frame across the diagram and can leave the next participant
+	// under it; that width is questionable in its own right and is not something
+	// this method can decide.
+	private static List<Real> stableMaxX(Tile tile) {
+		if (tile instanceof NoteTile)
+			return ((NoteTile) tile).getStableMaxX();
+
+		if (tile instanceof CommunicationTileSelf //
+				|| tile instanceof CommunicationTileNoteRight //
+				|| tile instanceof CommunicationTileSelfNoteRight //
+				|| tile instanceof LifeEventTile //
+				|| tile instanceof ReferenceTile //
+				|| tile instanceof DividerTile)
+			// getDrawnMaxX(): the loop's actual drawn extent for the two
+			// self-message entries above (see Tile.getDrawnMinX()/getDrawnMaxX()),
+			// identically getMaxX() for the other three (no override, so the
+			// push is unchanged for them).
+			return Collections.singletonList(tile.getDrawnMaxX());
+
+		return Collections.emptyList();
+	}
+
+	// Left-side mirror of stableMaxX(), same whitelist reasoning, same safety
+	// requirement (a plain delta chain over LivingSpace positions, confirmed by
+	// inspection), just the LEFT-reaching counterpart of each note/self-message
+	// wrapper: CommunicationTileNoteLeft/CommunicationTileSelfNoteLeft instead
+	// of their *NoteRight siblings. LifeEventTile/ReferenceTile carry no
+	// left/right asymmetry (both measured from a specific participant's own
+	// posB/posC/posD), so they are reused as-is.
+	//
+	// DividerTile is deliberately absent here, UNLIKE on the right side: its
+	// getMaxX() reaches from `xorigin` (the whole diagram's own left edge, not
+	// any participant here) rightward by the divider's drawn width -- safe to
+	// use as a lower bound on `nextPosA`, since `xorigin` is an independent
+	// root nothing here pushes on. Its getMinX(), by contrast, IS `xorigin`
+	// itself: `previous`'s own posC is ultimately measured FROM xorigin (every
+	// LivingSpace chains back to it), so constraining xorigin to be bigger
+	// than something built from previous's position points the dependency
+	// backwards -- confirmed live: it throws the solver's own
+	// `IllegalStateException: Infinite Loop?`. A `==divider==` inside a group
+	// therefore still isn't guaranteed clear of a preceding participant; same
+	// class of known, unfixable gap as DelayTile on the other side.
+	private static List<Real> stableMinX(Tile tile) {
+		if (tile instanceof NoteTile)
+			return ((NoteTile) tile).getStableMinX();
+
+		if (tile instanceof CommunicationTileSelf //
+				|| tile instanceof CommunicationTileNoteLeft //
+				|| tile instanceof CommunicationTileSelfNoteLeft //
+				|| tile instanceof LifeEventTile //
+				|| tile instanceof ReferenceTile)
+			// getDrawnMinX(): see the matching comment in stableMaxX() above.
+			return Collections.singletonList(tile.getDrawnMinX());
+
+		return Collections.emptyList();
+	}
+
+	// Pushes `nextPosA` past every right edge `group`'s own frame is built on,
+	// `margin` beyond each of them. Each push stands on its own -- stacked
+	// ensureBiggerThan() calls are exactly the "max" the constructor computes
+	// with RealUtils.max(), minus the caching trap, since the solver reads each
+	// endpoint afresh on every compile() pass.
+	//
+	// A nested group recurses with `margin` grown by its own frame margins:
+	// nothing else knows that an inner frame sits MARGINX + EXTERNAL_MARGINX2
+	// outside the content it wraps, and that offset stacks once per nesting
+	// level (issue #2788, `group` inside `group`).
+	private void ensureClearsFrameOf(GroupingTile group, Real nextPosA, double margin, LivingSpaces livingSpaces) {
+		ensureClearsTitleOf(group, nextPosA, margin, livingSpaces);
+
+		for (Tile tile : group.tiles) {
+			if (tile instanceof GroupingTile) {
+				// A nested group's own right-hand notes are part of what it reports
+				// as its getMaxX(), so the parent frame is stretched to cover them
+				// too -- they hang INSIDE the parent, unlike this group's own notes,
+				// which hang outside its frame and push nothing. A plain distance
+				// again, so it just joins the margin.
+				final GroupingTile nested = (GroupingTile) tile;
+				final double notes = nested.getNotesWidth(getStringBounder(), NotePosition.RIGHT);
+				ensureClearsFrameOf(nested, nextPosA, margin + MARGINX + EXTERNAL_MARGINX2 + notes, livingSpaces);
+				continue;
+			}
+			for (Real maxX : stableMaxX(tile))
+				nextPosA.ensureBiggerThan(maxX.addFixed(margin));
+		}
+	}
+
+	// A group whose title is wider than its content is stretched by its own
+	// header, not by anything a child tile reports: the constructor says so with
+	// `max2.add(this.min.addFixed(width + 16))`. That `min` is a RealMin and
+	// cannot be handed to ensureBiggerThan(), so the left edge is re-derived from
+	// the leftmost touched participant instead -- which is what `min` resolves to
+	// in the ordinary case, `min2` being built from `tile.getMinX() - MARGINX` and
+	// a message's getMinX() being its leftmost participant's posC. A left-hand
+	// note reaches further left than that, so its overhang -- a fixed distance, not
+	// a Real -- is subtracted back off. Getting that subtraction right matters:
+	// without it, a group whose leftmost participant carries a wide `note over`
+	// pushed the next participant by half that note's width too far, which on a
+	// diagram with two participants and a narrow frame is the whole visible gap.
+	// Anything left unaccounted for still over-estimates the left edge and
+	// therefore the push, which is the harmless direction -- under-estimating
+	// would put the participant back under the frame.
+	private void ensureClearsTitleOf(GroupingTile group, Real nextPosA, double margin, LivingSpaces livingSpaces) {
+		final Set<LivingSpace> touched = new HashSet<>();
+		collectTouchedLivingSpaces(group.tiles, livingSpaces, touched);
+
+		LivingSpace leftmost = null;
+		for (LivingSpace candidate : livingSpaces.values())
+			if (touched.contains(candidate)) {
+				leftmost = candidate;
+				break;
+			}
+
+		if (leftmost == null)
+			return;
+
+		// Two corrections to `margin`, both from the constructor's own formulas:
+		// the left edge is `min = leftmost.posC - MARGINX` (min2 is built from
+		// getMinX() MINUS MARGINX), and the title contributor is added to max2 RAW
+		// -- `max2.add(this.min.addFixed(width + 16))`, with no MARGINX of its own,
+		// unlike every child tile. So only EXTERNAL_MARGINX2 separates it from the
+		// drawn frame edge, and pushing a full frameMargin here would leave 16px of
+		// dead space to the right of every group whose title drives its width.
+		double overhang = 0;
+		for (Tile tile : group.tiles)
+			if (tile instanceof NoteTile && ((NoteTile) tile).getLeftAnchor() == leftmost)
+				overhang = Math.max(overhang, ((NoteTile) tile).getLeftOverhang());
+
+		final double width = group.getPreferredDimensionIfEmpty(getStringBounder()).getWidth();
+		nextPosA.ensureBiggerThan(
+				leftmost.getPosC(getStringBounder()).addFixed(width + 16 - MARGINX - MARGINX - overhang + margin));
+	}
+
+	private static void addTouched(Set<LivingSpace> touched, LivingSpaces livingSpaces, Participant participant) {
+		if (participant == null)
+			return;
+
+		final LivingSpace livingSpace = livingSpaces.get(participant);
+		if (livingSpace != null)
+			touched.add(livingSpace);
+	}
+
+	// `note across` builds its Note with both participants null (see
+	// FactorySequenceNoteAcrossCommand): TileBuilder resolves that null/null
+	// pair to tileArguments.getFirstLivingSpace()/getLastLivingSpace(), i.e.
+	// the very first and last LivingSpace of the WHOLE diagram, not to
+	// anything getParticipant()/getParticipant2() can report here. Falling
+	// through to addTouched() for each (a no-op on null) would leave such a
+	// note untouched, which is exactly the cycle the comment above warns
+	// about: the note's own getStableMaxX() still reports the diagram's last
+	// LivingSpace as one of its right edges (OVER_SEVERAL), so
+	// ensureClearsFrameOf() would derive the next participant's push from a
+	// Real rooted in that same participant's own position. Marking every
+	// LivingSpace touched matches what the note actually spans and makes
+	// rightmostOf() land on the diagram's true last participant, after which
+	// there is nothing left to push.
+	private static void addNoteTouched(Set<LivingSpace> touched, LivingSpaces livingSpaces, Note note) {
+		if (note.getParticipant() == null && note.getParticipant2() == null) {
+			for (LivingSpace ls : livingSpaces.values())
+				touched.add(ls);
+			return;
+		}
+
+		addTouched(touched, livingSpaces, note.getParticipant());
+		addTouched(touched, livingSpaces, note.getParticipant2());
+	}
+
+	private static LivingSpace rightmostOf(LivingSpaces livingSpaces, Set<LivingSpace> touched) {
+		LivingSpace rightmost = null;
+		for (LivingSpace candidate : livingSpaces.values())
+			if (touched.contains(candidate))
+				rightmost = candidate;
+
+		return rightmost;
+	}
+
+	private static LivingSpace leftmostOf(LivingSpaces livingSpaces, Set<LivingSpace> touched) {
+		for (LivingSpace candidate : livingSpaces.values())
+			if (touched.contains(candidate))
+				return candidate;
+
+		return null;
+	}
+
+	// Walks this group's tiles (and any nested groups) to find every
+	// LivingSpace touched by a message/self-message/life-event.
+	// Declaration order tracks left-to-right layout
+	// order (the same assumption PlayingSpace.ensureDisjoint() already relies
+	// on), so the touched set alone is enough to find "the group's own
+	// rightmost content" without reading any not-yet-resolved Real position.
+	private static void collectTouchedLivingSpaces(List<Tile> tiles, LivingSpaces livingSpaces,
+			Set<LivingSpace> touched) {
+		for (Tile tile : tiles) {
+			final Event ev = tile.getEvent();
+			if (ev instanceof Message) {
+				final LivingSpace ls1 = livingSpaces.get(((Message) ev).getParticipant1());
+				final LivingSpace ls2 = livingSpaces.get(((Message) ev).getParticipant2());
+				touched.add(ls1);
+				touched.add(ls2);
+			} else if (ev instanceof MessageExo) {
+				touched.add(livingSpaces.get(((MessageExo) ev).getParticipant()));
+			} else if (ev instanceof LifeEvent) {
+				touched.add(livingSpaces.get(((LifeEvent) ev).getParticipant()));
+			} else if (ev instanceof Note) {
+				// A note anchored on a participant counts as touching it, exactly
+				// like a message would. Leaving it out is not merely incomplete:
+				// the participant it is drawn over would then be seen as the FIRST
+				// one after the group, and ensureClearsFrameOf() would push its own
+				// posA past a Real derived from its own posC -- a cycle the solver
+				// reports as `IllegalStateException: Infinite Loop?`.
+				addNoteTouched(touched, livingSpaces, (Note) ev);
+			} else if (ev instanceof Notes) {
+				for (Note note : (Notes) ev)
+					addNoteTouched(touched, livingSpaces, note);
+			} else if (ev instanceof Reference) {
+				// Same reasoning as a note, and the same cycle if it is left out:
+				// `ref over b, c` inside a group must make c a participant OF the
+				// group, or c would be seen as the first one after it.
+				for (Participant participant : ((Reference) ev).getParticipant())
+					addTouched(touched, livingSpaces, participant);
+			}
+
+			if (tile instanceof GroupingTile)
+				collectTouchedLivingSpaces(((GroupingTile) tile).tiles, livingSpaces, touched);
+		}
+	}
+
+	// ===================== ASCII =====================
+	//
+	// A group (frame, alt, opt, loop, partition, ...) draws itself as a frame
+	// box enclosing its stacked children, with its title on the top border
+	// row — the same object-oriented "each object draws itself" pattern as
+	// every other tile, and structurally the ASCII counterpart of the
+	// pixel drawU() above (frame component + children stacked below the
+	// header). PartitionTile inherits all of this unchanged.
+	//
+	// One margin constant, the ASCII analogue of the pixel MARGINX: how many
+	// cells the frame border sits outside the leftmost/rightmost column its
+	// children actually touch, so arrows and lifelines run inside the frame,
+	// not on its border.
+	protected static final int ASCII_FRAME_MARGIN = 2;
+
+	// The header is the frame's top border, plus (when the title fits) its
+	// pentagon-style tab — delegated entirely to AGroupFrame.getBodyRowOffset(),
+	// since it alone decides whether the tab is drawn; the footer is a
+	// single row (the tilde bottom border). The body in between is the children
+	// stacked, each at its own asciiDimension() height.
+	private static final int ASCII_FOOTER_ROWS = 1;
+
+	// Builds a throwaway AGroupFrame (same pattern as ANote's size, read back
+	// rather than recomputed elsewhere) purely to ask how many rows its
+	// header occupies — needed by both asciiDimension() (to size the frame
+	// before it's ever drawn) and asciiDraw()'s child-stacking loop. The height
+	// passed to ADimension2D here is irrelevant (getBodyRowOffset() only reads
+	// the width), so 0 is fine.
+	private int asciiHeaderRows() {
+		final int[] cols = asciiFrameColumns();
+		final int width = cols[1] - cols[0] + 1;
+		return new AGroupFrame(new ADimension2D(width, 0), asciiTitle(), asciiFrameHasTab()).getBodyRowOffset();
+	}
+
+	// Whether this group's ASCII frame uses the pentagon-style cut-corner tab
+	// (true, every plain group/alt/loop/... kind) or stamps its title centered
+	// directly on the top border instead (false). Overridden by PartitionTile:
+	// a partition's pixel rendering (PartitionTile.getComponent()) never draws
+	// a tab, only a plain rectangle with a centered title — see AGroupFrame's
+	// useTab field for the actual shape difference.
+	protected boolean asciiFrameHasTab() {
+		return true;
+	}
+
+	@Override
+	public void asciiAddConstraints() {
+		// Exactly like addConstraints() above: recurse into the children so a
+		// message nested inside the group still pushes its two participants
+		// apart. The frame's own title width is not (yet) reserved on the
+		// ASCII column solver — a very long group title could overflow
+		// the frame past the participants; same class of known gap as notes.
+		for (Tile tile : tiles)
+			tile.asciiAddConstraints();
+	}
+
+	// The union of the children's own ascii ranges, expressed as composable
+	// Real (not yet resolved columns) — exactly the same shape as the pixel
+	// min/max computed from tile.getMinX()/getMaxX() in the constructor above
+	// (RealUtils.min(min2)/RealUtils.max(max2)). Unlike the pixel version this
+	// can't be precomputed in the constructor: the ASCII Real graph
+	// (asciiPosB...) doesn't exist yet at construction time, only once
+	// PlayingSpaceWithParticipants.asciiDraw() wires it up — so it's computed
+	// lazily, on demand, each time it's asked. Children with no range of their
+	// own (null, e.g. EmptyTile) are skipped; if none has any, null is
+	// returned, same contract as the Tile default.
+	private Real asciiChildrenMin() {
+		final List<Real> mins = new ArrayList<>();
+		for (Tile tile : tiles) {
+			final Real m = tile.getAsciiMinX();
+			if (m != null)
+				mins.add(m);
+		}
+		if (mins.isEmpty())
+			return null;
+
+		return RealUtils.min(mins);
+	}
+
+	private Real asciiChildrenMax() {
+		final List<Real> maxs = new ArrayList<>();
+		for (Tile tile : tiles) {
+			final Real m = tile.getAsciiMaxX();
+			if (m != null)
+				maxs.add(m);
+		}
+		if (maxs.isEmpty())
+			return null;
+
+		return RealUtils.max(maxs);
+	}
+
+	@Override
+	public Real getAsciiMinX() {
+		final Real childMin = asciiChildrenMin();
+		if (childMin == null)
+			return null;
+
+		return childMin.addFixed(-ASCII_FRAME_MARGIN);
+	}
+
+	@Override
+	public Real getAsciiMaxX() {
+		final Real childMax = asciiChildrenMax();
+		if (childMax == null)
+			return null;
+
+		return childMax.addFixed(ASCII_FRAME_MARGIN);
+	}
+
+	// The [left, right] resolved ASCII columns of the frame border itself,
+	// read from getAsciiMinX()/getAsciiMaxX() once the ASCII RealLine has
+	// compiled — the one place in this class where a Real is finally cast to
+	// an int, since InfinitePlan only understands character columns. Falls
+	// back to spanning every participant of the diagram when the group has no
+	// child with any columns (e.g. an empty group), so it still draws a
+	// sensible frame instead of crashing on a null range.
+	protected int[] asciiFrameColumns() {
+		final Real min = getAsciiMinX();
+		final Real max = getAsciiMaxX();
+		if (min != null && max != null)
+			return new int[] { (int) min.getCurrentValue(), (int) max.getCurrentValue() };
+
+		// Spans the participant BOXES (posB .. posD - 1), not their lifeline centres:
+		// same convention as PartitionTile.asciiFrameColumns(), so an empty group and
+		// a partition frame agree on where the diagram's edges are. (Using the life
+		// columns here would draw an empty group's frame narrower than the heads it
+		// is supposed to enclose.)
+		int lo = Integer.MAX_VALUE;
+		int hi = Integer.MIN_VALUE;
+		for (LivingSpace ls : getTileArguments().getLivingSpaces().values()) {
+			// posB is the box's left column, posD its EXCLUSIVE right edge
+			lo = Math.min(lo, (int) ls.getAsciiPosB().getCurrentValue());
+			hi = Math.max(hi, (int) ls.getAsciiPosD().getCurrentValue() - 1);
+		}
+		if (lo == Integer.MAX_VALUE)
+			return new int[] { 0, 0 };
+
+		return new int[] { lo - ASCII_FRAME_MARGIN, hi + ASCII_FRAME_MARGIN };
+	}
+
+	// Body height, between the header (top border) and footer (bottom border)
+	// rows: the last row occupied by any child, per computeAsciiLayout()'s
+	// clustering -- a `&` run inside the group is counted ONCE (its tallest
+	// member), not summed member by member, matching computeBodyHeight()'s
+	// pixel-side fix for the exact same bug. Does NOT catch
+	// UnsupportedOperationException: a child with no ASCII support crashes
+	// here, naming itself, exactly like the orchestrator's own policy.
+	private int asciiBodyHeight() {
+		return computeAsciiLayout(tiles).totalHeight;
+	}
+
+	@Override
+	public ADimension2D asciiDimension() {
+		final int[] cols = asciiFrameColumns();
+		final int width = cols[1] - cols[0] + 1;
+		final int height = asciiHeaderRows() + asciiBodyHeight() + ASCII_FOOTER_ROWS;
+		return new ADimension2D(width, height);
+	}
+
+	// ASCII counterpart of drawU(): delegate the frame box + title to an
+	// AGroupFrame — the AsciiBlock counterpart of the pixel GROUPING_HEADER_TEOZ
+	// Component that drawU() obtains from the skin and delegates to —
+	// positioned at the frame's absolute left column, then
+	// draw each child inside, stacked, exactly like drawU() translates each
+	// child by the running height below the header. Children compute their own
+	// absolute columns from getAsciiLifeColumn() (they ignore the plan's
+	// horizontal translation for their arrows — see CommunicationTile.asciiDraw()),
+	// so they are drawn with dx = 0 and only their row advanced; the frame, by
+	// contrast, is drawn at the absolute columns asciiFrameColumns() resolved
+	// to. The child-stacking stays here, in the tile, not in the frame block:
+	// the pixel drawU() likewise stacks children itself below the header
+	// Component rather than nesting them inside it.
+	@Override
+	public void asciiDraw(InfinitePlan plan) {
+		final int[] cols = asciiFrameColumns();
+		final int left = cols[0];
+		final int width = cols[1] - cols[0] + 1;
+
+		// The frame draws itself (border, sides, footer, and title tab) at its
+		// absolute left column; the same instance is reused just below to know
+		// where the body starts, rather than re-deriving that separately.
+		final AGroupFrame frame = new AGroupFrame(asciiDimension(), asciiTitle(), asciiFrameHasTab());
+		frame.asciiDraw(plan.move(left, 0));
+
+		// Children stacked in the body, below the header, using the SAME cluster
+		// layout as asciiBodyHeight() (via computeAsciiLayout()) so the declared
+		// height and the actual drawn rows agree -- a `&` run's members all start
+		// at the SAME row instead of stacking sequentially, and the row after the
+		// run advances by only the tallest member's height, not by every member's
+		// height added up. An ElseTile is the exception -- its divider spans the
+		// whole frame, whose columns only this parent knows, so the parent draws
+		// it via an AElseSeparator (the counterpart of drawAllElses()) at the
+		// frame's absolute left column and full width. The ElseTile still owns its
+		// own row height via asciiDimension() (and is never itself a `&` member).
+		final AsciiLayout layout = computeAsciiLayout(tiles);
+		final int bodyStart = frame.getBodyRowOffset();
+		for (int i = 0; i < tiles.size(); i++) {
+			final Tile tile = tiles.get(i);
+			final int y = bodyStart + layout.rowOf[i];
+			if (tile instanceof ElseTile)
+				new AElseSeparator(width, ((ElseTile) tile).asciiLabel()).asciiDraw(plan.move(left, y));
+			else
+				tile.asciiDraw(plan.move(0, y));
+		}
+	}
+
+	// The group's title as a single flat line: for a plain "group"/partition
+	// it is just the comment, otherwise "title comment" — mirroring how the
+	// pixel `display` field is built in the constructor. Multi-line titles are
+	// flattened for now, the same simplification message labels used before
+	// Display became an AsciiBlock; good enough for the single-word
+	// partition/group titles the current tests use.
+	protected String asciiTitle() {
+		final StringBuilder sb = new StringBuilder();
+		for (CharSequence cs : display) {
+			if (sb.length() > 0)
+				sb.append(' ');
+			sb.append(cs);
+		}
+		return sb.toString();
+	}
+
+	public Real getMinX() {
+		return min.addFixed(-EXTERNAL_MARGINX1 - getNotesWidth(getStringBounder(), NotePosition.LEFT));
+	}
+
+	public Real getMaxX() {
+		return max.addFixed(EXTERNAL_MARGINX2 + getNotesWidth(getStringBounder(), NotePosition.RIGHT));
+	}
+
+	// Notes attached to the group ("note left"/"note right" just after the end
+	// keyword) are drawn like in Puma: at the top corner of the group frame, on
+	// the requested side (see GroupingGraphicalElementHeader)
+	private void drawNotes(UGraphic ug) {
+		final StringBounder stringBounder = ug.getStringBounder();
+
+		double xRight = max.getCurrentValue();
+		for (Component note : getNoteComponents(NotePosition.RIGHT)) {
+			final XDimension2D dimNote = note.getPreferredDimension(stringBounder);
+			note.drawU(ug.apply(UTranslate.dx(xRight)), Area.create(dimNote.getWidth(), dimNote.getHeight()),
+					(Context2D) ug);
+			xRight += dimNote.getWidth();
+		}
+
+		double xLeft = min.getCurrentValue();
+		for (Component note : getNoteComponents(NotePosition.LEFT)) {
+			final XDimension2D dimNote = note.getPreferredDimension(stringBounder);
+			note.drawU(ug.apply(UTranslate.dx(xLeft - dimNote.getWidth())),
+					Area.create(dimNote.getWidth(), dimNote.getHeight()), (Context2D) ug);
+			xLeft -= dimNote.getWidth();
+		}
+	}
+
+	private double getNotesWidth(StringBounder stringBounder, NotePosition position) {
+		double result = 0;
+		for (Component note : getNoteComponents(position))
+			result += note.getPreferredDimension(stringBounder).getWidth();
+
+		return result;
+	}
+
+	private List<Component> getNoteComponents(NotePosition position) {
+		if (end == null)
+			return Collections.emptyList();
+
+		final List<Component> result = new ArrayList<>();
+		for (Note noteOnMessage : end.getNoteOnMessages()) {
+			// A "note left" is drawn on the left side of the frame, everything
+			// else (right, or a position that defaulted to right) on the right
+			final boolean isLeft = noteOnMessage.getPosition() == NotePosition.LEFT;
+			if (isLeft != (position == NotePosition.LEFT))
+				continue;
+
+			final ISkinParam sk = noteOnMessage.getSkinParamBackcolored(skinParam);
+			result.add(skin.createComponentNote(noteOnMessage.getUsedStyles(),
+					noteOnMessage.getNoteStyle().getNoteComponentType(), sk, noteOnMessage.getDisplay(),
+					noteOnMessage.getColors()));
+		}
+		return result;
+	}
+
+	// Walks the tile tree to run each tile's notifyPositioned() -- which no longer
+	// POSITIONS anything (every tile reads its own solved gauge) but still drives
+	// the livebox steps, goCreate/goDestroy and the local/full tile lists used
+	// for LinkAnchor lookups.
+	public static void fillPositionelTiles(StringBounder stringBounder, List<Tile> tiles,
+			final List<CommonTile> local, List<CommonTile> full) {
+		for (Tile tile : tiles) {
+			tile.onGaugeResolved();
+			local.add((CommonTile) tile);
+			full.add((CommonTile) tile);
+			if (tile instanceof GroupingTile)
+				fillPositionalSubGroupTiles(stringBounder, full, (GroupingTile) tile);
+		}
+	}
+
+	private static void fillPositionalSubGroupTiles(StringBounder stringBounder, List<CommonTile> full,
+			GroupingTile groupingTile) {
+		final ArrayList<CommonTile> local2 = new ArrayList<>();
+		fillPositionelTiles(stringBounder, groupingTile.tiles, local2, full);
+	}
+
+	// Sum of the tiles' heights, counting each run of parallel (&) tiles ONCE:
+	// the members of a & cluster share a contact line, so they overlap, and the
+	// cluster's real vertical extent is tallest-before-contact +
+	// tallest-after-contact -- NOT the sum of their heights (which would
+	// double-count the overlap and make a group with a & message too tall).
+	//
+	// This is a throwaway, height-only pass: Y POSITIONING goes through the gauge
+	// chain, built at construction time, and `tiles` stays flat for drawing. It
+	// reproduces exactly what the former mergeParallelCore /
+	// moveRecentParallelTilesToPending produced -- the SAME grouping of tiles
+	// into clusters -- but sums the cluster extents directly instead of building
+	// throwaway TileParallel objects to hold them.
+	//
+	// Grouping rule (a faithful restatement of the former mergeParallelCore /
+	// moveRecentParallelTilesToPending): a `pending` list collects the tiles that
+	// could still be pulled into a cluster. A parallel tile joins (or opens) the
+	// cluster, pulling the WHOLE pending list in with it -- this is how the run's
+	// true first member, sitting just before the first `&`, plus any
+	// LifeEventTiles between them, end up in the cluster. A LifeEventTile is
+	// NEVER a separator: it too is merely held in pending (it can be pulled into
+	// a cluster, but can never start one on its own). Only a non-parallel,
+	// non-LifeEvent tile flushes the pending run and starts a fresh one with
+	// itself.
+	//
+	// Crucially, a tile's height is added to the total ONLY when the run it
+	// belongs to is flushed -- never eagerly -- so a tile already "placed" can
+	// still be retroactively pulled into a following cluster without any height
+	// having to be subtracted back (exactly what the former code achieved by
+	// moving tiles out of `result` and into the TileParallel).
+	private static double computeBodyHeight(List<Tile> tiles) {
+		double total = 0;
+		// Tiles held back, still eligible to be pulled into a cluster by a
+		// following `&`: a lone seed possibly trailed by life events, or (once a
+		// `&` has been seen) the growing cluster itself.
+		final List<Tile> pending = new ArrayList<>();
+		boolean clusterOpen = false;
+
+		for (Tile tile : tiles) {
+			if (isParallel(tile)) {
+				// Joins/opens the cluster, pulling in whatever is pending.
+				clusterOpen = true;
+				pending.add(tile);
+			} else if (tile instanceof LifeEventTile) {
+				// Never a separator: held in pending so a later `&` can still
+				// pull it (and everything before it in the run) into a cluster.
+				pending.add(tile);
+			} else {
+				// A real separator: flush the pending run, then start a fresh
+				// one seeded with this tile.
+				total += flushPending(pending, clusterOpen);
+				clusterOpen = false;
+				pending.add(tile);
+			}
+		}
+		total += flushPending(pending, clusterOpen);
+
+		return total;
+	}
+
+	// Consumes `pending` (clearing it) and returns its total height. When the run
+	// held a `&` cluster, that is the cluster's real extent -- tallest-before-
+	// contact + tallest-after-contact over ALL its members (they overlap on the
+	// shared contact line, so their heights are NOT summed). Otherwise it is the
+	// plain sum of the members' preferred heights (a lone seed, possibly trailed
+	// by life events that were never pulled into a cluster).
+	private static double flushPending(List<Tile> pending, boolean wasCluster) {
+		if (pending.isEmpty())
+			return 0;
+
+		double result = 0;
+		if (wasCluster) {
+			double contact = 0;
+			double after = 0;
+			for (Tile tile : pending) {
+				contact = Math.max(contact, tile.getContactPointRelative());
+				after = Math.max(after, tile.getZZZ());
+			}
+			result = contact + after;
+		} else {
+			for (Tile tile : pending)
+				result += tile.getPreferredHeight();
+		}
+		pending.clear();
+		return result;
+	}
+
+	public static boolean isParallel(Tile tile) {
+		return tile.getEvent().isParallel();
+	}
+
+	// ===================== ASCII height-only clustering =====================
+	//
+	// ASCII counterpart of computeBodyHeight()/flushPending() above -- same
+	// clustering rule (pending list, retroactive capture of a run's first
+	// member, LifeEventTiles held in pending rather than acting as separators),
+	// reused verbatim, because a `&` run is still a run whether measured in
+	// pixels or rows.
+	//
+	// ONE deliberate difference from the pixel version: a cluster's height here
+	// is the MAX of its members' own asciiDimension() heights, not
+	// max(contactPointRelative) + max(zzz). There is no ASCII Y gauge yet (see
+	// ASCIIVERSE.md §32.7-§32.11): no ASCII tile publishes a "contact row"
+	// distinct from its own height, so "tallest-before/after-contact" has no
+	// ASCII equivalent to read. All this can honestly claim is: the members of
+	// a `&` run SHARE a row span (so the group/document reserves only the
+	// tallest member's height instead of summing them all -- the wasted-space
+	// half of the bug), each drawn starting at the SAME row. It does NOT align
+	// their own arrows/labels on a shared internal row the way pixel's
+	// contact-line sharing does -- that is exactly the still-open Y-gauge work,
+	// not this fix. See ASCIIVERSE.md §32.7 (bug 1) for the full picture.
+	//
+	// Used by both asciiBodyHeight()/asciiDraw() here (a `&` run inside a
+	// group) and PlayingSpaceWithParticipants.asciiDraw() (a `&` run at the
+	// top level) -- one shared implementation, not two copies, per the lesson
+	// already recorded in YGAUGE.md: the day a second caller needs this exact
+	// computation, share it rather than duplicate it.
+	static final class AsciiLayout {
+		// rowOf[i]: the row (relative to this block's own top, 0-based) at which
+		// tiles.get(i) should be drawn. Every member of a `&` cluster gets the
+		// SAME row.
+		final int[] rowOf;
+		final int totalHeight;
+
+		AsciiLayout(int[] rowOf, int totalHeight) {
+			this.rowOf = rowOf;
+			this.totalHeight = totalHeight;
+		}
+	}
+
+	static AsciiLayout computeAsciiLayout(List<Tile> tiles) {
+		final int[] rowOf = new int[tiles.size()];
+		int y = 0;
+		// Indices into `tiles`, mirroring computeBodyHeight()'s `pending` list of
+		// Tile references -- kept as indices here since we must also WRITE each
+		// member's row, not just read its height.
+		final List<Integer> pending = new ArrayList<>();
+		boolean clusterOpen = false;
+
+		for (int i = 0; i < tiles.size(); i++) {
+			final Tile tile = tiles.get(i);
+			if (isParallel(tile)) {
+				clusterOpen = true;
+				pending.add(i);
+			} else if (tile instanceof LifeEventTile) {
+				pending.add(i);
+			} else {
+				y += flushAsciiPending(tiles, pending, clusterOpen, rowOf, y);
+				clusterOpen = false;
+				pending.add(i);
+			}
+		}
+		y += flushAsciiPending(tiles, pending, clusterOpen, rowOf, y);
+
+		return new AsciiLayout(rowOf, y);
+	}
+
+	// Consumes `pending` (clearing it), writes each member's row into `rowOf`,
+	// and returns the run's total row count. A `&` cluster: every member
+	// starts at row `y` (the SAME row -- see AsciiLayout's own comment on why
+	// this is a wasted-space fix, not a contact-alignment one), height = the
+	// max of their own asciiDimension() heights. A plain sequential run:
+	// members stack one after another starting at `y`, height = their sum.
+	private static int flushAsciiPending(List<Tile> tiles, List<Integer> pending, boolean wasCluster, int[] rowOf,
+			int y) {
+		if (pending.isEmpty())
+			return 0;
+
+		int height;
+		if (wasCluster) {
+			int max = 0;
+			for (int idx : pending)
+				max = Math.max(max, tiles.get(idx).asciiDimension().getHeight());
+			for (int idx : pending)
+				rowOf[idx] = y;
+			height = max;
+		} else {
+			int localY = y;
+			for (int idx : pending) {
+				rowOf[idx] = localY;
+				localY += tiles.get(idx).asciiDimension().getHeight();
+			}
+			height = localY - y;
+		}
+		pending.clear();
+		return height;
+	}
+
+	void addNewpageTiles(List<NewpageTile> newpages) {
+		for (Tile tile : tiles) {
+			if (tile instanceof GroupingTile)
+				((GroupingTile) tile).addNewpageTiles(newpages);
+
+			if (tile instanceof NewpageTile)
+				newpages.add((NewpageTile) tile);
+		}
+	}
+	
+	public GroupingStart getGroupingStart() {
+		return start;
+	}
+
+	// Package-private child-list accessor for PlayingSpace's parallel-sibling
+	// disjointness pass (see PlayingSpace.findAnchorLivingSpace()): it needs to
+	// walk into a group to find ANY leaf message/participant to safely compare
+	// declaration order against, without ever reading this tile's own cached
+	// min/max (see the ASCII_FRAME_MARGIN / MARGINX comments on why that's
+	// unsafe pre-compile).
+	List<Tile> getChildTilesForAnchor() {
+		return tiles;
+	}
+
+	public TileArguments getTileArguments() {
+		return tileArguments;
+	}
+
+	public ISkinParam getSkinParam() {
+		return skinParam;
+	}
+
+
+
+}

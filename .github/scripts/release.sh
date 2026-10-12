@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 set -ex
 
+echo "::group::[List JAR/ASC]"
 find . -name "*.jar"
 find . -name "*.asc"
+echo "::endgroup::"
 
 mkdir "github_release"
 
 cp "build/libs/plantuml-${RELEASE_VERSION}.jar" "github_release/plantuml.jar"
 cp "build/libs/plantuml-${RELEASE_VERSION}.jar" "github_release/plantuml-${RELEASE_VERSION}.jar"
+cp "build/java8/plantuml.jar" "github_release/plantuml-java8-${RELEASE_VERSION}.jar"
 cp "build/libs/plantuml-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-${RELEASE_VERSION}-javadoc.jar"
 cp "build/libs/plantuml-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-${RELEASE_VERSION}-sources.jar"
-cp "build/libs/plantuml-pdf-${RELEASE_VERSION}.jar" "github_release/plantuml-pdf-${RELEASE_VERSION}.jar"
-#cp "build/libs/plantuml-linux-amd64-${RELEASE_VERSION}" "github_release/plantuml-linux-amd64-${RELEASE_VERSION}"
-#cp "build/libs/plantuml-darwin-amd64-${RELEASE_VERSION}" "github_release/plantuml-darwin-amd64-${RELEASE_VERSION}"
-#cp "build/libs/plantuml-win-amd64-${RELEASE_VERSION}.exe" "github_release/plantuml-win-amd64-${RELEASE_VERSION}.exe"
+cp "build/libs/js-plantuml-${RELEASE_VERSION}.zip" "github_release/js-plantuml-${RELEASE_VERSION}.zip"
+cp "build/native-image/native-plantuml-windows-amd64-${RELEASE_VERSION}.zip" "github_release/native-plantuml-windows-amd64-${RELEASE_VERSION}.zip"
+cp "build/native-image/native-plantuml-linux-amd64-${RELEASE_VERSION}.zip" "github_release/native-plantuml-linux-amd64-${RELEASE_VERSION}.zip"
+cp "build/native-image/native-plantuml-linux-arm64-${RELEASE_VERSION}.zip" "github_release/native-plantuml-linux-arm64-${RELEASE_VERSION}.zip"
+cp "build/native-image/native-plantuml-macos-arm64-${RELEASE_VERSION}.zip" "github_release/native-plantuml-macos-arm64-${RELEASE_VERSION}.zip"
 cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}.jar" "github_release/plantuml-asl-${RELEASE_VERSION}.jar"
 cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-asl-${RELEASE_VERSION}-javadoc.jar"
 cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-asl-${RELEASE_VERSION}-sources.jar"
@@ -29,6 +33,9 @@ cp "plantuml-lgpl/build/libs/plantuml-lgpl-${RELEASE_VERSION}-sources.jar" "gith
 cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}.jar" "github_release/plantuml-mit-${RELEASE_VERSION}.jar"
 cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-mit-${RELEASE_VERSION}-javadoc.jar"
 cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-mit-${RELEASE_VERSION}-sources.jar"
+cp "plantuml-mit-light/build/libs/plantuml-mit-light-${RELEASE_VERSION}.jar" "github_release/plantuml-mit-light-${RELEASE_VERSION}.jar"
+cp "plantuml-mit-light/build/libs/plantuml-mit-light-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-mit-light-${RELEASE_VERSION}-javadoc.jar"
+cp "plantuml-mit-light/build/libs/plantuml-mit-light-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-mit-light-${RELEASE_VERSION}-sources.jar"
 cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}.jar" "github_release/plantuml-gplv2-${RELEASE_VERSION}.jar"
 cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar"
 cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-gplv2-${RELEASE_VERSION}-sources.jar"
@@ -39,7 +46,9 @@ if [[ -e "build/publications/maven/module.json.asc" ]]; then
   cp "build/libs/plantuml-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-${RELEASE_VERSION}.jar.asc"
   cp "build/libs/plantuml-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-${RELEASE_VERSION}-javadoc.jar.asc"
   cp "build/libs/plantuml-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-${RELEASE_VERSION}-sources.jar.asc"
-  cp "build/libs/plantuml-pdf-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-pdf-${RELEASE_VERSION}.jar.asc"
+  if [[ -e "build/libs/js-plantuml-${RELEASE_VERSION}.zip.asc" ]]; then
+    cp "build/libs/js-plantuml-${RELEASE_VERSION}.zip.asc" "github_release/js-plantuml-${RELEASE_VERSION}.zip.asc"
+  fi
   cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-asl-${RELEASE_VERSION}.jar.asc"
   cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-asl-${RELEASE_VERSION}-javadoc.jar.asc"
   cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-asl-${RELEASE_VERSION}-sources.jar.asc"
@@ -55,6 +64,9 @@ if [[ -e "build/publications/maven/module.json.asc" ]]; then
   cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-mit-${RELEASE_VERSION}.jar.asc"
   cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-mit-${RELEASE_VERSION}-javadoc.jar.asc"
   cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-mit-${RELEASE_VERSION}-sources.jar.asc"
+  cp "plantuml-mit-light/build/libs/plantuml-mit-light-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-mit-light-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-mit-light/build/libs/plantuml-mit-light-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-mit-light-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "plantuml-mit-light/build/libs/plantuml-mit-light-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-mit-light-${RELEASE_VERSION}-sources.jar.asc"
   cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-gplv2-${RELEASE_VERSION}.jar.asc"
   cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar.asc"
   cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-gplv2-${RELEASE_VERSION}-sources.jar.asc"
@@ -62,6 +74,7 @@ fi
 
 gh release create \
   --target "${GITHUB_SHA}" \
+  --generate-notes \
   --title "${TAG}" \
   "${TAG}" github_release/*
 

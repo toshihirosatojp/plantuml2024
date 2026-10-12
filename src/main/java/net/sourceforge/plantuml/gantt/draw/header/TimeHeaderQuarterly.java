@@ -1,0 +1,171 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.gantt.draw.header;
+
+import java.time.LocalDate;
+
+import net.sourceforge.plantuml.gantt.data.DayCalendarData;
+import net.sourceforge.plantuml.gantt.data.TimeBoundsData;
+import net.sourceforge.plantuml.gantt.data.TimeScaleConfigData;
+import net.sourceforge.plantuml.gantt.data.TimelineStyleData;
+import net.sourceforge.plantuml.gantt.data.WeekConfigData;
+import net.sourceforge.plantuml.gantt.time.TimePoint;
+import net.sourceforge.plantuml.gantt.time.TimePointFormat;
+import net.sourceforge.plantuml.gantt.timescale.TimeScale;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.style.SName;
+
+class TimeHeaderQuarterly extends TimeHeaderCalendar {
+
+	public TimeHeaderQuarterly(TimeScale timeScale, WeekConfigData weekConfigData, DayCalendarData dayCalendar,
+			TimeBoundsData timeBounds, TimeScaleConfigData scaleConfig, TimelineStyleData timelineStyle) {
+		super(weekConfigData, dayCalendar, timeBounds, scaleConfig, timelineStyle, timeScale);
+	}
+
+	@Override
+	public double getTimeHeaderHeight(StringBounder stringBounder) {
+		final double h1 = timelineStyle.getFontSizeYear();
+		final double h2 = timelineStyle.getFontSizeMonth();
+		return h1 + h2 + 5;
+	}
+
+	@Override
+	public double getTimeFooterHeight(StringBounder stringBounder) {
+		final double h1 = timelineStyle.getFontSizeYear();
+		final double h2 = timelineStyle.getFontSizeMonth();
+		return h1 + h2 + 5;
+	}
+
+	@Override
+	public double getFullHeaderHeight(StringBounder stringBounder) {
+		return getTimeHeaderHeight(stringBounder);
+	}
+
+	@Override
+	public void drawTimeHeaderInternal(final UGraphic ug, double totalHeightWithoutFooter) {
+		drawYears(ug);
+		final double h1 = timelineStyle.getFontSizeYear();
+		final double h2 = timelineStyle.getFontSizeMonth();
+		drawQuarters(ug.apply(UTranslate.dy(h1 + 2)));
+		printVerticalSeparators(ug, totalHeightWithoutFooter);
+		drawHline(ug, 0);
+		drawHline(ug, h1 + 2);
+		drawHline(ug, h1 + 2 + h2 + 2);
+		// drawHline(ug, getFullHeaderHeight(ug.getStringBounder()));
+	}
+
+	@Override
+	public void drawTimeFooter(UGraphic ug) {
+		final double h1 = timelineStyle.getFontSizeYear();
+		final double h2 = timelineStyle.getFontSizeMonth();
+		// ug = ug.apply(UTranslate.dy(3));
+		drawQuarters(ug);
+		drawYears(ug.apply(UTranslate.dy(h2 + 2)));
+		drawHline(ug, 0);
+		drawHline(ug, h2 + 2);
+		drawHline(ug, h1 + 2 + h2 + 2);
+//		drawHline(ug, getTimeFooterHeight(ug.getStringBounder()));
+	}
+
+	private void drawYears(final UGraphic ug) {
+		final FontConfiguration fcMonth = getFontConfigurationSLOW(SName.month, true, openFontColor());
+
+		final double h1 = timelineStyle.getFontSizeYear();
+		TimePoint last = null;
+		double lastChange = -1;
+		for (LocalDate day = getMinDay(); day.compareTo(getMaxDay()) < 0; day = day.plusDays(1)) {
+			final TimePoint wink = TimePoint.ofStartOfDay(day);
+			final double x1 = getTimeScale().getPosition(wink);
+			if (last == null || wink.monthYear().getYear() != last.monthYear().getYear()) {
+				drawVline(ug.apply(getLineColor()), x1, 0, h1 + 2);
+				if (last != null)
+					printYear(ug, last, lastChange, x1, fcMonth);
+
+				lastChange = x1;
+				last = wink;
+			}
+		}
+		final double x1 = getTimeScale().getPosition(TimePoint.ofStartOfDay(getMaxDay().plusDays(1)));
+		if (x1 > lastChange)
+			printYear(ug, last, lastChange, x1, fcMonth);
+
+		final double end = x1;
+		drawVline(ug.apply(getLineColor()), end, 0, h1 + 2);
+	}
+
+	private void drawQuarters(UGraphic ug) {
+		final double h2 = timelineStyle.getFontSizeMonth();
+
+		final FontConfiguration fcDay = getFontConfigurationSLOW(SName.day, false, openFontColor());
+
+		TimePoint last = null;
+		double lastChange = -1;
+		for (LocalDate day = getMinDay(); day.compareTo(getMaxDay()) < 0; day = day.plusDays(1)) {
+			final TimePoint wink = TimePoint.ofStartOfDay(day);
+			final double x1 = getTimeScale().getPosition(wink);
+			if (last == null || wink.quarter().equals(last.quarter()) == false) {
+				drawVline(ug.apply(getLineColor()), x1, 0, h2 + 2);
+				if (last != null)
+					printQuarter(ug, last, lastChange, x1, fcDay);
+
+				lastChange = x1;
+				last = wink;
+			}
+		}
+		final double x1 = getTimeScale().getPosition(TimePoint.ofStartOfDay(getMaxDay().plusDays(1)));
+		if (x1 > lastChange)
+			printQuarter(ug, last, lastChange, x1, fcDay);
+
+		final double end = x1;
+		drawVline(ug.apply(getLineColor()), end, 0, h2 + 2);
+	}
+
+	private void printYear(UGraphic ug, TimePoint monthYear, double start, double end, FontConfiguration fc) {
+		printCentered(ug, false, start, end, monthYear, fc, TimePointFormat.YEAR);
+	}
+
+	private void printQuarter(UGraphic ug, TimePoint quarter, double start, double end, FontConfiguration fc) {
+		printCentered(ug, false, start, end, quarter, fc, TimePointFormat.QUARTER);
+	}
+
+//	private void printLeft(UGraphic ug, TextBlock text, double start) {
+//		text.drawU(ug.apply(UTranslate.dx(start)));
+//	}
+
+}

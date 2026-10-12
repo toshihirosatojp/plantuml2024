@@ -1,3 +1,17 @@
+
+> [!TIP]
+> 🧩 **New!** Render PlantUML diagrams directly inside GitHub with [our official browser extension](https://github.com/plantuml/plantuml-for-github) &mdash; No server. No tokens. No tracking. Zero permissions but clipboard.
+>
+> [![Add to Chrome](https://img.shields.io/badge/Add%20to%20Chrome-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/plantuml-for-github/lbokhidfopkdehkmlmpaabacljoediic) [![Add to Firefox](https://img.shields.io/badge/Add%20to%20Firefox-FF7139?style=flat-square&logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/plantuml-for-github/)
+>
+> 💬 Want native PlantUML support in GitHub? Upvote and join the discussion: [Support for PlantUML diagrams](https://github.com/orgs/community/discussions/10111)
+
+> [!TIP]
+> 🤖 **New!** Give your AI assistant the power to render and check PlantUML diagrams with [`@plantuml/mcp-js`](https://www.npmjs.com/package/@plantuml/mcp-js) &mdash; a pure Node.js [MCP](https://modelcontextprotocol.io/) server. No Java. No server. Just `npx @plantuml/mcp-js`.
+>
+> [![npm version](https://img.shields.io/npm/v/@plantuml/mcp-js?logo=npm&color=cb3837)](https://www.npmjs.com/package/@plantuml/mcp-js) [![npm downloads](https://img.shields.io/npm/dm/@plantuml/mcp-js?logo=npm&color=cb3837)](https://www.npmjs.com/package/@plantuml/mcp-js) [![MCP Toplist](https://mcptoplist.com/badge/glama%2Fplantuml.svg)](https://mcptoplist.com/server/glama%2Fplantuml)
+
+
 # 🌱 PlantUML
 
 Generate UML diagrams from textual descriptions.
@@ -19,7 +33,15 @@ Generate UML diagrams from textual descriptions.
 [![Pre-release Date](https://img.shields.io/github/release-date-pre/plantuml/plantuml?color=chocolate)](https://github.com/plantuml/plantuml/releases/tag/snapshot)
 [![GitHub last commit](https://img.shields.io/github/last-commit/plantuml/plantuml?color=chocolate)](https://github.com/plantuml/plantuml/commits/)
 [![CI](https://github.com/plantuml/plantuml/actions/workflows/ci.yml/badge.svg?color=chocolate)](https://github.com/plantuml/plantuml/actions/workflows/ci.yml)
-[![snapshot javadoc](https://img.shields.io/badge/javadoc-snapshot-chocolate.svg?logo=github)](https://plantuml.github.io/plantuml/)
+[![snapshot javadoc](https://img.shields.io/badge/javadoc-snapshot-chocolate.svg?logo=github)](https://plantuml.github.io/plantuml/javadoc)
+[![snapshot jacoco](https://img.shields.io/badge/code_coverage%3A_jacoco-snapshot-chocolate?logo=github)](https://plantuml.github.io/plantuml/jacoco/test/html/index.html)
+[![SonarQube Cloud](https://img.shields.io/badge/scanned_on-SonarQube-blue?logo=sonarqubecloud)](https://sonarcloud.io/project/overview?id=plantuml_plantuml)
+
+[![Dev Project Pages index](https://img.shields.io/badge/dev_project-pages-764ba2?logo=github)](https://plantuml.github.io/plantuml/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/plantuml/plantuml)
+
+[![JavaScript Demo](https://img.shields.io/badge/JavaScript_PlantUML_Demo-F7DF1E?logo=javascript&logoColor=000)](https://plantuml.github.io/plantuml/js-plantuml)
+
 
 ## ℹ️ About
 
@@ -39,8 +61,8 @@ PlantUML is a component that allows you to create various UML diagrams through s
   - [State diagram](http://plantuml.com/state-diagram)
   - [Timing diagram](http://plantuml.com/timing-diagram)
 - 📈 Non-UML Diagrams
-  - [JSON data](http://plantuml.com/json)
-  - [YAML data](http://plantuml.com/yaml)
+  - [JSON (JavaScript Object Notation) data](http://plantuml.com/json)
+  - [YAML (YAML Ain't Markup Language) data](http://plantuml.com/yaml)
   - [EBNF (Extended Backus-Naur Form)](http://plantuml.com/ebnf)
   - [Regex (Regular Expression)](http://plantuml.com/regex)
   - [Network diagram (nwdiag)](http://plantuml.com/nwdiag)
@@ -56,6 +78,8 @@ PlantUML is a component that allows you to create various UML diagrams through s
   - Entity Relationship (ER) diagram
     - [Information Engineering (IE) diagram](http://plantuml.com/ie-diagram)
     - [Entity Relationship (ER) diagram (Chen's notation)](http://plantuml.com/er-diagram)
+  -  [Chart diagram](http://plantuml.com/chart-diagram)
+  -  [Files (files tree) diagram](http://plantuml.com/files-diagram)
 
 ### 📣 Additional Features
 
@@ -70,7 +94,7 @@ For a more detailed overview, visit [PlantUML Official Website](https://plantuml
 
 ## 🛡 Security
 
-See [Security Policy](SECURITY.md) and [Security overview](https://github.com/plantuml/plantuml/security).
+See [Security Policy](docs/SECURITY.md) and [Security overview](https://github.com/plantuml/plantuml/security).
 
 > [!IMPORTANT]
 > [PlantUML is **not** affected by the log4j vulnerability.](https://github.com/plantuml/plantuml/issues/826)
@@ -81,13 +105,39 @@ Whether you're looking to use PlantUML as a standalone application or as a compo
 
 ## ⚙️ Building from Source
 
-To build PlantUML from source, you'll need to have certain prerequisites installed and follow a series of steps outlined in our build guide. Find detailed instructions in our [BUILDING.md](https://github.com/plantuml/plantuml/blob/master/BUILDING.md) file.
+To build PlantUML from source, you have two options:
+
+1. Using Gradle: `./gradlew jar`
+2. Using Ant: `ant`
+
+For prerequisites and detailed build instructions, see our [BUILDING.md](https://github.com/plantuml/plantuml/blob/master/docs/BUILDING.md) guide.
+
+### 🌐 Building for the Browser (TeaVM)
+
+PlantUML can be compiled to JavaScript with [TeaVM](https://teavm.org/) to run entirely client-side in the browser, with no server required. To produce the JavaScript artifacts and use them in your own project:
+
+```sh
+git clone https://github.com/plantuml/plantuml.git
+cd plantuml
+chmod +x ./gradlew
+./gradlew clean teavm -Pfast
+cp ./build/generated/teavm/js/plantuml.js $YOUR_PROJECT/plantuml.js
+cp ./build/generated/teavm/js/viz-global.js $YOUR_PROJECT/viz-global.js
+```
+
+The `-Pfast` flag skips the slow parts of a regular build (tests, Javadoc, JaCoCo) so you only get the TeaVM output. The `viz-global.js` file provides [Viz.js](https://github.com/mdaines/viz-js) (Graphviz) support for diagrams that rely on Dot layout.
+
+The `teavm` task also copies the PlantUML stdlib bundles and a ready-to-use `index.html` demo into `./build/generated/teavm/js/`.
+
+For a live example of client-side rendering, see the [JavaScript PlantUML Demo](https://plantuml.github.io/plantuml/js-plantuml).
 
 ## 🧱 Contributing
 
 PlantUML is an open-source project, and we welcome contributions of all kinds. Whether you're helping us fix bugs, improve the docs, or spread the word, we appreciate your support. See our [contributing guide](CONTRIBUTING.md) for more information on how to get started.
 
-For comprehensive and detailed documentation on using PlantUML, refer to the [official Javadoc, available here](https://plantuml.github.io/plantuml/). Please note that this documentation is a work in progress and may not be complete. 
+The language guide on [plantuml.com](https://plantuml.com) is updated through [alphadoc](http://alphadoc.plantuml.com/). Edit a page there (pick a language and wiki syntax), save, and maintainers publish it after review. Details are in [CONTRIBUTING.md](CONTRIBUTING.md#updating-the-plantuml-guide-alphadoc).
+
+For comprehensive and detailed documentation on using PlantUML, refer to the [official Javadoc, available here](https://plantuml.github.io/plantuml/javadoc). Please note that this documentation is a work in progress and may not be complete. 
 
 ## 🧑‍🤝‍🧑 Support and Community
 
@@ -105,4 +155,3 @@ PlantUML is licensed under several licenses; you can choose the one that suits y
 - [MIT license](https://opensource.org/licenses/MIT)
 
 For more information, please refer to the [PlantUML license FAQ](https://plantuml.com/en/faq#ddbc9d04378ee462) to help determine which license is appropriate for your use case.
-

@@ -10,9 +10,9 @@ RUN wget \
   "https://github.com/plantuml/plantuml/releases/download/${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION#?}.jar" \
   -O /opt/plantuml.jar
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
-ENV LANG en_US.UTF-8
+ENV LANG=en_US.UTF-8
 
 RUN apt-get update \
   && apt-get install --no-install-recommends -y \
@@ -21,8 +21,8 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+ARG GRAPHVIZ_VERSION=14.0.1
 # Build Graphviz from source because there are no binary distributions for recent versions
-ARG GRAPHVIZ_VERSION
 ARG GRAPHVIZ_BUILD_DIR=/tmp/graphiz-build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -34,13 +34,15 @@ RUN apt-get update && \
         && \
     mkdir -p $GRAPHVIZ_BUILD_DIR && \
     cd $GRAPHVIZ_BUILD_DIR && \
-    GRAPHVIZ_VERSION=${GRAPHVIZ_VERSION:-$(curl -s https://gitlab.com/api/v4/projects/4207231/releases/ | jq -r '.[] | .name' | sort -V -r | head -1)} && \
     curl -o graphviz.tar.gz https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/${GRAPHVIZ_VERSION}/graphviz-${GRAPHVIZ_VERSION}.tar.gz && \
     tar -xzf graphviz.tar.gz && \
     cd graphviz-$GRAPHVIZ_VERSION && \
     ./configure && \
     make && \
-    make install && \
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/graphviz.conf && \
+    echo "/usr/local/lib/graphviz" >> /etc/ld.so.conf.d/graphviz.conf && \
+    LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib/graphviz make install && \
+    ( ldconfig || true ) && \
     apt-get remove -y \
         build-essential \
         jq \
@@ -56,6 +58,12 @@ RUN apt-get update && \
 COPY --from=loader /opt/plantuml.jar /opt/plantuml.jar
 
 WORKDIR /data
+
+# Create a non-root group and user so files output do not require sudo to interact with
+RUN addgroup --gid 1000 appuser && \
+    adduser --system --uid 1000 --group appuser && \
+    chown appuser:appuser /data
+USER appuser
 
 ENTRYPOINT ["java", "-jar", "/opt/plantuml.jar"]
 CMD ["-version"]

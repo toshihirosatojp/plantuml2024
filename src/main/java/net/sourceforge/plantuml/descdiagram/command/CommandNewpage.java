@@ -1,0 +1,89 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.descdiagram.command;
+
+import net.sourceforge.plantuml.NewpagedDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
+import net.sourceforge.plantuml.command.CommandExecutionResult;
+import net.sourceforge.plantuml.command.PSystemCommandFactory;
+import net.sourceforge.plantuml.command.ParserPass;
+import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.utils.LineLocation;
+
+public class CommandNewpage extends SingleLineCommand2<TitledDiagram> {
+
+	private final PSystemCommandFactory factory;
+
+	public CommandNewpage(PSystemCommandFactory factory) {
+		super(getRegexConcat());
+		this.factory = factory;
+	}
+
+	static IRegex getRegexConcat() {
+		return RegexConcat.build(CommandNewpage.class.getName(), RegexLeaf.start(), //
+				new RegexLeaf("newpage"), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'newpage' starts a new page: the following lines form a fresh, empty
+		// diagram of the same kind (only the dpi setting is carried over), so
+		// the elements declared before are not visible after. This differs
+		// from the sequence diagram 'newpage', which only inserts a page break
+		// in a single diagram.
+		return "Starting a new page: the following lines form a new empty diagram";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
+		final int dpi = diagram.getSkinParam().getDpi();
+		final TitledDiagram emptyDiagram = (TitledDiagram) factory.createEmptyDiagram(diagram.getPathSystem(),
+				diagram.getSource(), diagram.getPrevious(), diagram.getPreprocessingArtifact());
+		if (dpi != 96)
+			emptyDiagram.setParam("dpi", "" + dpi);
+
+		final NewpagedDiagram result = new NewpagedDiagram(diagram.getSource(), diagram, emptyDiagram,
+				diagram.getPreprocessingArtifact());
+		return CommandExecutionResult.newDiagram(result);
+	}
+}

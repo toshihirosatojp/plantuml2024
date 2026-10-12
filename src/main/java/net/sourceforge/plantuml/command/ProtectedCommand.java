@@ -1,0 +1,98 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ *
+ * If you like this project or if you find it useful, you can support us at:
+ *
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ *
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ *
+ *
+ */
+package net.sourceforge.plantuml.command;
+
+import java.util.Objects;
+
+import net.sourceforge.plantuml.core.Diagram;
+import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.utils.BlocLines;
+import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.version.Version;
+
+public final class ProtectedCommand<S extends Diagram> implements Command<S> {
+
+	private final Command<S> cmd;
+
+	public ProtectedCommand(Command<S> cmd) {
+		this.cmd = Objects.requireNonNull(cmd);
+	}
+
+	public CommandExecutionResult execute(S system, BlocLines lines, ParserPass currentPass) {
+		try {
+			// WasmLog.log("...running " + cmd.getClass().getName() + " ...");
+			final CommandExecutionResult result = cmd.execute(system, lines, currentPass);
+			// if (result.isOk()) {
+			// // TRACECOMMAND
+			// ::uncomment when __TEAVM__
+			// // System.err.println("CMD = " + cmd.getClass() + " " + currentPass);
+			// ::done
+			// }
+			return result;
+		} catch (Throwable t) {
+			Log.error("Error " + t);
+			Logme.error(t);
+			String msg;
+			if (Logme.MODE_VEGA)
+				msg = "You should send a mail with this log";
+			else
+				msg = "You should send a mail with this log (V" + Version.versionString() + ")";
+			Log.error(msg);
+			msg += " " + t.toString();
+			return CommandExecutionResult.error(msg, t);
+		}
+	}
+	
+	@Override
+	public String explain(BlocLines lines) {
+		return cmd.explain(lines);
+	}
+
+	public CommandControl isValid(BlocLines lines) {
+		return cmd.isValid(lines);
+	}
+
+	@Override
+	public boolean isEligibleFor(ParserPass pass) {
+		return cmd.isEligibleFor(pass);
+	}
+
+	@Override
+	public final boolean isCommandForbidden(BlocLines lines) {
+		return cmd.isCommandForbidden(lines);
+	}
+
+}

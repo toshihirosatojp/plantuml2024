@@ -1,0 +1,248 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.sequencediagram.teoz;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.real.Real;
+import net.sourceforge.plantuml.real.RealUtils;
+import net.sourceforge.plantuml.sequencediagram.Event;
+import net.sourceforge.plantuml.sequencediagram.Note;
+import net.sourceforge.plantuml.sequencediagram.NotePosition;
+import net.sourceforge.plantuml.sequencediagram.NoteStyle;
+import net.sourceforge.plantuml.sequencediagram.Notes;
+import net.sourceforge.plantuml.skin.Area;
+import net.sourceforge.plantuml.skin.Component;
+import net.sourceforge.plantuml.skin.ComponentType;
+import net.sourceforge.plantuml.skin.Context2D;
+import net.sourceforge.plantuml.skin.rose.Rose;
+import net.sourceforge.plantuml.style.ISkinParam;
+
+public class NotesTile extends AbstractTile implements Tile {
+
+	private final LivingSpaces livingSpaces;
+	private final Rose skin;
+	private final ISkinParam skinParam;
+	private final Notes notes;
+	private final YGauge yGauge;
+
+	public Event getEvent() {
+		return notes;
+	}
+
+	@Override
+	public double getContactPointRelative() {
+		// Same rule as NoteTile: a note has no arrow line of its own, so its
+		// contact point is its vertical center -- which is what a parallel (&)
+		// message's arrow aligns against
+		return getPreferredHeight() / 2;
+	}
+
+	public NotesTile(StringBounder stringBounder, LivingSpaces livingSpaces, Notes notes, Rose skin,
+			ISkinParam skinParam, YGauge currentY) {
+		super(stringBounder, currentY);
+		this.livingSpaces = livingSpaces;
+		this.notes = notes;
+		this.skin = skin;
+		this.skinParam = skinParam;
+
+		// createWithContact, not the bare create(currentY.getMax(), ...): this tile
+		// PUBLISHES a contact line, so that a parallel (&) message FOLLOWING it can
+		// still find one and align its arrow against this block's vertical center.
+		// With a plain create() the contact would be null and the follower would
+		// silently fall back to top alignment (the same latent gap the note wrappers
+		// had).
+		//
+		// Note there is deliberately NO createParallel branch here, unlike NoteTile:
+		// `Notes` (the OVER_SEVERAL multi-note container) inherits AbstractEvent's
+		// isParallel(), hardcoded to false, and never calls goParallel() -- unlike
+		// `Note`. So a `notes` block can never itself be the & member, and such a
+		// branch would be dead code. If `notes` ever gains goParallel(), mirror
+		// NoteTile's constructor exactly.
+		this.yGauge = YGauge.createWithContact(currentY, getContactPointRelative(), getPreferredHeight());
+	}
+
+	@Override
+	public YGauge getYGauge() {
+		return yGauge;
+	}
+
+	private Component getComponent(StringBounder stringBounder, Note note) {
+		final Component comp = skin.createComponentNote(note.getUsedStyles(), getNoteComponentType(note.getNoteStyle()),
+				note.getSkinParamBackcolored(skinParam), note.getDisplay(), note.getColors(), note.getPosition());
+		return comp;
+	}
+
+	private ComponentType getNoteComponentType(NoteStyle noteStyle) {
+		if (noteStyle == NoteStyle.HEXAGONAL)
+			return ComponentType.NOTE_HEXAGONAL;
+
+		if (noteStyle == NoteStyle.BOX)
+			return ComponentType.NOTE_BOX;
+
+		return ComponentType.NOTE;
+	}
+
+	public void drawU(UGraphic ug) {
+		// Self-translate prologue: absolute gauge position
+		ug = ug.apply(UTranslate.dy(getYGauge().getMin().getCurrentValue()));
+		final StringBounder stringBounder = ug.getStringBounder();
+
+		for (Note note : notes) {
+			final Component comp = getComponent(stringBounder, note);
+			final XDimension2D dim = comp.getPreferredDimension(stringBounder);
+			final double x = getX(stringBounder, note).getCurrentValue();
+			final Area area = Area.create(getUsedWidth(stringBounder, note), dim.getHeight());
+
+			final UGraphic ug2 = ug.apply(UTranslate.dx(x));
+			comp.drawU(ug2, area, (Context2D) ug2);
+		}
+	}
+
+	private double getUsedWidth(StringBounder stringBounder, Note note) {
+		final Component comp = getComponent(stringBounder, note);
+		final XDimension2D dim = comp.getPreferredDimension(stringBounder);
+		final double width = dim.getWidth();
+		return width;
+	}
+
+	private Real getXcenter(StringBounder stringBounder, Note note) {
+		final LivingSpace livingSpace1 = livingSpaces.get(note.getParticipant());
+		return livingSpace1.getPosC(stringBounder);
+	}
+
+	private Real getX(StringBounder stringBounder, Note note) {
+		final LivingSpace livingSpace1 = livingSpaces.get(note.getParticipant());
+		final NotePosition position = note.getPosition();
+		final double width = getUsedWidth(stringBounder, note);
+		if (position == NotePosition.LEFT) {
+			// Several LEFT notes on the same participant are rigidly anchored to the
+			// same point: they are stacked leftward (see getStackingOffset)
+			return livingSpace1.getPosC(stringBounder)
+					.addFixed(-width - getStackingOffset(stringBounder, note));
+		} else if (position == NotePosition.RIGHT) {
+			final int level = livingSpace1.getLevelAt(this, EventsHistoryMode.IGNORE_FUTURE_DEACTIVATE);
+			final double dx = level * CommunicationTile.LIVE_DELTA_SIZE;
+			return livingSpace1.getPosC(stringBounder).addFixed(dx + getStackingOffset(stringBounder, note));
+		} else if (position == NotePosition.OVER_SEVERAL) {
+			final LivingSpace livingSpace2 = livingSpaces.get(note.getParticipant2());
+			final Real x1 = livingSpace1.getPosC(stringBounder);
+			final Real x2 = livingSpace2.getPosC(stringBounder);
+			return RealUtils.middle(x1, x2).addFixed(-width / 2);
+		} else if (position == NotePosition.OVER) {
+			return livingSpace1.getPosC(stringBounder).addFixed(-width / 2);
+		} else {
+			throw new UnsupportedOperationException(position.toString());
+		}
+	}
+
+	// Total width of the previous notes of this group anchored to the same
+	// point (same participant, same side), so that they are drawn side by side
+	// instead of overlapping
+	private double getStackingOffset(StringBounder stringBounder, Note note) {
+		double result = 0;
+		for (Note other : notes) {
+			if (other == note)
+				return result;
+
+			if (other.getPosition() == note.getPosition() && other.getParticipant() == note.getParticipant())
+				result += getUsedWidth(stringBounder, other);
+		}
+		return result;
+	}
+
+	public double getPreferredHeight() {
+		double result = 0;
+		for (Note note : notes) {
+			final Component comp = getComponent(getStringBounder(), note);
+			final XDimension2D dim = comp.getPreferredDimension(getStringBounder());
+			result = Math.max(result, dim.getHeight());
+		}
+		return result;
+	}
+
+	public void addConstraints() {
+		final List<Note> all = notes.asList();
+		for (int i = 0; i < all.size() - 1; i++) {
+			for (int j = i + 1; j < all.size(); j++) {
+				final double center1 = getXcenter(getStringBounder(), all.get(i)).getCurrentValue();
+				final double center2 = getXcenter(getStringBounder(), all.get(j)).getCurrentValue();
+				// Both notes are anchored to the same point (for example two notes
+				// on the same participant): their relative positions are rigid, so
+				// adding a constraint between them would be unsatisfiable and make
+				// RealLine.compile() loop forever
+				if (center2 == center1)
+					continue;
+
+				if (center2 > center1) {
+					final Real point1b = getX2(getStringBounder(), all.get(i));
+					final Real point2 = getX(getStringBounder(), all.get(j));
+					point2.ensureBiggerThan(point1b);
+				} else {
+					final Real point1 = getX(getStringBounder(), all.get(i));
+					final Real point2b = getX2(getStringBounder(), all.get(j));
+					point1.ensureBiggerThan(point2b);
+				}
+			}
+		}
+	}
+
+	public Real getMinX() {
+		final List<Real> reals = new ArrayList<>();
+		for (Note note : notes)
+			reals.add(getX(getStringBounder(), note));
+
+		return RealUtils.min(reals);
+	}
+
+	private Real getX2(StringBounder stringBounder, Note note) {
+		return getX(stringBounder, note).addFixed(getUsedWidth(stringBounder, note));
+	}
+
+	public Real getMaxX() {
+		final List<Real> reals = new ArrayList<>();
+		for (Note note : notes)
+			reals.add(getX2(getStringBounder(), note));
+
+		return RealUtils.max(reals);
+	}
+
+}

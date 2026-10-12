@@ -1,0 +1,106 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.real;
+
+class PositiveForce {
+
+	private final Real fixedPoint;
+	private final RealMoveable movingPoint;
+	private final double minimunDistance;
+	private final boolean trace = false;
+	private final RealDebug creationPoint;
+
+	public PositiveForce(Real fixedPoint, RealMoveable movingPoint, double minimunDistance) {
+		if (fixedPoint == movingPoint) {
+			throw new IllegalArgumentException();
+		}
+		this.fixedPoint = fixedPoint;
+		this.movingPoint = movingPoint;
+		this.minimunDistance = minimunDistance;
+		// See RealDebug: one PositiveForce is created per layout constraint, so
+		// this stack trace capture (used only for the diagnostic below when a
+		// force conflicts with an already-faulty Real) is opt-in.
+		this.creationPoint = RealDebug.create();
+	}
+
+	@Override
+	public String toString() {
+		return "PositiveForce fixed=" + fixedPoint + " moving=" + movingPoint + " min=" + minimunDistance;
+	}
+
+	public boolean apply() {
+		if (trace) {
+			System.err.println("apply " + this);
+		}
+		final double movingPointValue = movingPoint.getCurrentValue();
+		final double fixedPointValue;
+		try {
+			fixedPointValue = fixedPoint.getCurrentValue();
+		} catch (IllegalStateException e) {
+			System.err.println("Pb with force " + this);
+			System.err.println("This force has been created here:");
+			RealDebug.printCreationStackTrace(creationPoint);
+			System.err.println("The fixed point has been created here: " + fixedPoint);
+			fixedPoint.printCreationStackTrace();
+			throw e;
+		}
+		final double distance = movingPointValue - fixedPointValue;
+		final double diff = distance - minimunDistance;
+		// Tolerance against floating-point absorption in the fixed-point
+		// iteration: a chained addition can be off
+		// by a few ULPs of the CURRENT magnitude, at which point 'move()' is a
+		// silent no-op and this force fires forever. The tolerance must scale
+		// with magnitude — a fixed 1e-6 is fine for typical diagrams but is not
+		// guaranteed to dominate the accumulated error on very large ones (many
+		// chained forces). Using a few ULPs of the larger operand times a
+		// safety factor keeps the slack always above the absorption threshold
+		// while staying many orders of magnitude below a pixel.
+		final double epsilon = Math.max(0.000001,
+				1000 * Math.ulp(Math.max(Math.abs(movingPointValue), Math.abs(fixedPointValue))));
+		if (diff >= -epsilon) {
+			if (trace) {
+				System.err.println("Not using ");
+			}
+			return false;
+		}
+		if (trace) {
+			System.err.println("moving " + (-diff) + " " + movingPoint);
+		}
+		movingPoint.move(-diff);
+		return true;
+	}
+
+}

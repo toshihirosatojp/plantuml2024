@@ -1,0 +1,184 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ *
+ */
+package net.sourceforge.plantuml.klimt;
+
+import net.sourceforge.plantuml.klimt.geom.XLine2D;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
+import net.sourceforge.plantuml.teavm.TeaVM;
+
+public class UClip implements UChange {
+	private final double x;
+	private final double y;
+	private final double width;
+	private final double height;
+
+	public UClip(double x, double y, double width, double height) {
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+	}
+
+	public UClip enlarge(double delta) {
+		return new UClip(x - delta, y - delta, width + 2 * delta, height + 2 * delta);
+	}
+
+	@Override
+	public String toString() {
+		return "CLIP x=" + x + " y=" + y + " w=" + width + " h=" + height;
+	}
+
+	public UClip translate(double dx, double dy) {
+		return new UClip(x + dx, y + dy, width, height);
+	}
+
+	public UClip translate(UTranslate translate) {
+		return translate(translate.getDx(), translate.getDy());
+	}
+
+	public final double getX() {
+		return x;
+	}
+
+	public final double getY() {
+		return y;
+	}
+
+	public final double getWidth() {
+		return width;
+	}
+
+	public final double getHeight() {
+		return height;
+	}
+
+	public boolean isInside(XPoint2D pt) {
+		return isInside(pt.getX(), pt.getY());
+	}
+
+	public boolean isInside(double xp, double yp) {
+		if (xp < x) {
+			if (TeaVM.a())
+				assert getClippedX(xp) != xp;
+			return false;
+		}
+		if (xp > x + width) {
+			if (TeaVM.a())
+				assert getClippedX(xp) != xp;
+			return false;
+		}
+		if (yp < y) {
+			if (TeaVM.a())
+				assert getClippedY(yp) != yp;
+			return false;
+		}
+		if (yp > y + height) {
+			if (TeaVM.a())
+				assert getClippedY(yp) != yp;
+			return false;
+		}
+		if (TeaVM.a())
+			assert getClippedX(xp) == xp;
+		if (TeaVM.a())
+			assert getClippedY(yp) == yp;
+		return true;
+	}
+
+	public XRectangle2D getClippedRectangle(XRectangle2D r) {
+		final double x1 = Math.max(r.getX(), x);
+		final double y1 = Math.max(r.getY(), y);
+		final double x2 = Math.min(r.getX() + r.getWidth(), x + width);
+		final double y2 = Math.min(r.getY() + r.getHeight(), y + height);
+		return new XRectangle2D(x1, y1, x2 - x1, y2 - y1);
+	}
+
+	public XLine2D getClippedLine(XLine2D line) {
+		if (isInside(line.x1, line.y1) && isInside(line.x2, line.y2))
+			return line;
+
+		if (isInside(line.x1, line.y1) == false && isInside(line.x2, line.y2) == false) {
+			if (line.x1 == line.x2) {
+				final double newy1 = getClippedY(line.y1);
+				final double newy2 = getClippedY(line.y2);
+				if (newy1 != newy2)
+					return new XLine2D(line.x1, newy1, line.x2, newy2);
+
+			}
+			return null;
+		}
+		if (line.x1 != line.x2 && line.y1 != line.y2)
+			return null;
+
+		if (TeaVM.a())
+			assert line.x1 == line.x2 || line.y1 == line.y2;
+		if (line.y1 == line.y2) {
+			final double newx1 = getClippedX(line.x1);
+			final double newx2 = getClippedX(line.x2);
+			return new XLine2D(newx1, line.y1, newx2, line.y2);
+		}
+		if (line.x1 == line.x2) {
+			final double newy1 = getClippedY(line.y1);
+			final double newy2 = getClippedY(line.y2);
+			return new XLine2D(line.x1, newy1, line.x2, newy2);
+		}
+		throw new IllegalStateException();
+	}
+
+	public boolean isInside(double x, double y, UPath shape) {
+		return isInside(x + shape.getMinX(), y + shape.getMinY()) && isInside(x + shape.getMaxX(), y + shape.getMaxY());
+	}
+
+	private double getClippedX(double xp) {
+		if (xp < x)
+			return x;
+
+		if (xp > x + width)
+			return x + width;
+
+		return xp;
+	}
+
+	private double getClippedY(double yp) {
+		if (yp < y)
+			return y;
+
+		if (yp > y + height)
+			return y + height;
+
+		return yp;
+	}
+
+}

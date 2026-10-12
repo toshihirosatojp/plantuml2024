@@ -1,0 +1,142 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.sequencediagram;
+
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.style.MergeStrategy;
+import net.sourceforge.plantuml.style.PName;
+import net.sourceforge.plantuml.style.SName;
+import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleBuilder;
+import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.WithStyle;
+
+public abstract class Grouping extends AbstractEvent implements Event, WithStyle {
+
+	private final String title;
+	private final GroupingType type;
+	private final String comment;
+	private final HColor backColorElement;
+
+	// private final StyleBuilder styleBuilder;
+
+	final private Style style;
+	final private Style styleHeader;
+
+	final public StyleSignatureBasic getStyleSignature() {
+		if (type == GroupingType.START_PARTITION)
+			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.partition);
+		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.group);
+	}
+
+	final private StyleSignatureBasic getHeaderStyleDefinition() {
+		if (type == GroupingType.START_PARTITION)
+			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.partition, SName.header);
+		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.groupHeader);
+	}
+
+	// The nested counterpart of the legacy flat "groupHeader" above, added for
+	// consistency with the dedicated "partition { header {...} }" selector
+	// (#2679): `sequenceDiagram { group { header {...} } }`. Not meaningful for
+	// a partition, which already has its own nested header signature via
+	// getHeaderStyleDefinition(). Kept as a plain override layered on top of
+	// the flat style (see computeStyleHeader()) rather than a replacement, so
+	// every existing diagram styling `groupHeader` directly keeps working
+	// unchanged: only diagrams that opt into the new nested form are affected.
+	final private StyleSignatureBasic getNestedHeaderStyleDefinition() {
+		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.group, SName.header);
+	}
+
+	private Style computeStyleHeader(StyleBuilder styleBuilder) {
+		final Style flat = getHeaderStyleDefinition().getMergedStyle(styleBuilder);
+		if (type == GroupingType.START_PARTITION)
+			return flat;
+
+		// "style" (this.style, already assigned above in the constructor) is the
+		// plain "group" style -- the exact ancestor "nested" cascades from, so
+		// mergeNestedChildOver() can isolate what header{} itself actually sets.
+		final Style nested = getNestedHeaderStyleDefinition().getMergedStyle(styleBuilder);
+		if (flat == null)
+			return nested;
+
+		return flat.mergeNestedChildOver(nested, style, MergeStrategy.OVERWRITE_EXISTING_VALUE);
+	}
+
+	public Style[] getUsedStyles() {
+		return new Style[] {
+				style == null ? null : style.eventuallyOverride(PName.BackGroundColor, getBackColorGeneral()),
+				styleHeader == null ? null : styleHeader.eventuallyOverride(PName.BackGroundColor, backColorElement) };
+	}
+
+	public Grouping(String title, String comment, GroupingType type, HColor backColorElement,
+			StyleBuilder styleBuilder) {
+		this.title = title;
+		// this.styleBuilder = styleBuilder;
+		this.comment = comment;
+		this.type = type;
+		this.backColorElement = backColorElement;
+		this.style = getStyleSignature().getMergedStyle(styleBuilder);
+		this.styleHeader = computeStyleHeader(styleBuilder);
+	}
+
+	@Override
+	public final String toString() {
+		return super.toString() + " " + type + " " + title;
+	}
+
+	final public String getTitle() {
+		return title;
+	}
+
+	final public GroupingType getType() {
+		return type;
+	}
+
+	public abstract int getLevel();
+
+	public abstract HColor getBackColorGeneral();
+
+	final public String getComment() {
+		return comment;
+	}
+
+	public final HColor getBackColorElement() {
+		return backColorElement;
+	}
+
+	public abstract boolean isParallel();
+
+}

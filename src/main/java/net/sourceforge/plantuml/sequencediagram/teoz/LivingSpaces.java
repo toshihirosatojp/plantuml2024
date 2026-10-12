@@ -1,0 +1,180 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.sequencediagram.teoz;
+
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.real.Real;
+import net.sourceforge.plantuml.sequencediagram.Participant;
+import net.sourceforge.plantuml.skin.Context2D;
+
+public class LivingSpaces {
+
+	private final Map<Participant, LivingSpace> all = new LinkedHashMap<Participant, LivingSpace>();
+
+	public Collection<LivingSpace> values() {
+		return all.values();
+	}
+
+	public void addConstraints(StringBounder stringBounder) {
+		LivingSpace previous = null;
+		for (LivingSpace current : all.values()) {
+			if (previous != null) {
+				final Real point1 = previous.getPosE(stringBounder);
+				final Real point2 = current.getPosA(stringBounder);
+				point2.ensureBiggerThan(point1.addFixed(10));
+			}
+			previous = current;
+		}
+	}
+
+	// ASCII counterpart of addConstraints(): keeps neighbouring participants at
+	// least ASCII_GAP cells apart, using the dedicated ASCII Real positions
+	// (getAsciiPosE()/getAsciiPosA()) instead of the pixel ones. The gap is a
+	// dedicated ASCII constant (1 cell), not the pixel 10 divided by anything.
+	private static final int ASCII_GAP = 1;
+
+	public void asciiAddConstraints() {
+		LivingSpace previous = null;
+		for (LivingSpace current : all.values()) {
+			if (previous != null) {
+				final Real point1 = previous.getAsciiPosE();
+				final Real point2 = current.getAsciiPosA();
+				point2.ensureBiggerThan(point1.addFixed(ASCII_GAP));
+			}
+			previous = current;
+		}
+	}
+
+	public LivingSpace previous(LivingSpace element) {
+		LivingSpace previous = null;
+		for (LivingSpace current : all.values()) {
+			if (current == element) {
+				return previous;
+			}
+			previous = current;
+		}
+		return null;
+	}
+
+	public LivingSpace next(LivingSpace element) {
+		for (Iterator<LivingSpace> it = all.values().iterator(); it.hasNext();) {
+			final LivingSpace current = it.next();
+			if (current == element && it.hasNext()) {
+				return it.next();
+			}
+		}
+		return null;
+
+	}
+
+	public Collection<Participant> participants() {
+		return all.keySet();
+	}
+
+	public void put(Participant participant, LivingSpace livingSpace) {
+		all.put(participant, livingSpace);
+	}
+
+	public LivingSpace get(Participant participant) {
+		return all.get(participant);
+	}
+
+	public void drawHeads(final UGraphic ug, Context2D context, VerticalAlignment verticalAlignment) {
+		final StringBounder stringBounder = ug.getStringBounder();
+		final double headHeight = getHeadHeight(stringBounder);
+		for (LivingSpace livingSpace : values()) {
+			final double x = livingSpace.getPosB(stringBounder).getCurrentValue();
+			double y = 0;
+			if (verticalAlignment == VerticalAlignment.BOTTOM) {
+				final XDimension2D dimHead = livingSpace.getHeadPreferredDimension(stringBounder);
+				y = headHeight - dimHead.getHeight();
+			}
+			// TOP means that we are drawing the footboxes at the bottom of the
+			// diagram (the real heads are aligned on BOTTOM): the tail component
+			// is used there, like in Puma (for an actor, the label is displayed
+			// above the stickman)
+			if (verticalAlignment == VerticalAlignment.TOP)
+				livingSpace.drawTail(ug.apply(new UTranslate(x, y)), context, verticalAlignment,
+						HorizontalAlignment.LEFT);
+			else
+				livingSpace.drawHead(ug.apply(new UTranslate(x, y)), context, verticalAlignment,
+						HorizontalAlignment.LEFT);
+		}
+	}
+
+	public double getHeadHeight(StringBounder stringBounder) {
+		double headHeight = 0;
+		for (LivingSpace livingSpace : values()) {
+			final XDimension2D headDim = livingSpace.getHeadPreferredDimension(stringBounder);
+			headHeight = Math.max(headHeight, headDim.getHeight());
+		}
+		return headHeight;
+	}
+
+	public void drawLifeLines(final UGraphic ug, double height, Context2D context) {
+		int i = 0;
+		for (LivingSpace livingSpace : values()) {
+			// if (i++ == 0) {
+			// System.err.println("TEMPORARY SKIPPING OTHERS");
+			// continue;
+			// }
+			// System.err.println("drawing lines " + livingSpace);
+			final double x = livingSpace.getPosC(ug.getStringBounder()).getCurrentValue();
+			livingSpace.drawLineAndLiveboxes(ug.apply(UTranslate.dx(x)), height, context);
+		}
+	}
+
+	public void delayOn(double y, double height) {
+		for (LivingSpace livingSpace : values())
+			livingSpace.delayOn(y, height);
+
+	}
+
+	public int size() {
+		return all.size();
+	}
+
+}
